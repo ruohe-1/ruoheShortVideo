@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shortvideo.mapper.UserMapper">
+    <insert id="insertRegisterLow" >
+        insert into user_low
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="phone != null">phone,</if>
+            <if test="email != null">email,</if>
+            <if test="passwordHash != null">password_hash,</if>
+            <if test="lastLoginAt != null">last_login_at,</if>
+            <if test="lastLoginIp != null">last_login_ip,</if>
+            <if test="createdTime != null">created_time,</if>
+            <if test="updatedTime != null">updated_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="phone != null">#{phone},</if>
+            <if test="email != null">#{email},</if>
+            <if test="passwordHash != null">#{passwordHash},</if>
+            <if test="lastLoginAt != null">#{lastLoginAt},</if>
+            <if test="lastLoginIp != null">#{lastLoginIp},</if>
+            <if test="createdTime != null">#{createdTime},</if>
+            <if test="updatedTime != null">#{updatedTime},</if>
+        </trim>
+    </insert>
+    <insert id="insertRegisterHigh" useGeneratedKeys="true" keyProperty="id">
+        insert into user_high
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="username != null">username,</if>
+            <if test="nickname != null">nickname,</if>
+            <if test="password != null">password,</if>
+            <if test="avatarUrl != null">avatar_url,</if>
+            <if test="signature != null">signature,</if>
+            <if test="role != null">role,</if>
+            <if test="status != null">status,</if>
+            <if test="createdTime != null">created_time,</if>
+            <if test="updatedTime != null">updated_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="username != null">#{username},</if>
+            <if test="nickname != null">#{nickname},</if>
+            <if test="password != null">#{password},</if>
+            <if test="avatarUrl != null">#{avatarUrl},</if>
+            <if test="signature != null">#{signature},</if>
+            <if test="role != null">#{role},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createdTime != null">#{createdTime},</if>
+            <if test="updatedTime != null">#{updatedTime},</if>
+        </trim>
+
+    </insert>
+    <!-- 更新用户信息 -->
+    <update id="updateUserInfo">
+        update user_high
+        <set>
+            <if test="nickname != null">nickname = #{nickname},</if>
+            <if test="signature != null">signature = #{signature},</if>
+            <if test="avatarUrl != null">avatar_url = #{avatarUrl},</if>
+        </set>
+        where id = #{userId}
+    </update>
+
+    <select id="findByPhone" resultType="com.shortvideo.pojo.entity.UserLow">
+        select id, user_id, phone, email, password_hash, last_login_at, last_login_ip, created_time, updated_time from user_low
+        <where>
+            <if test= "phone != null">phone = #{phone}</if>
+        </where>
+    </select>
+    <select id="findByUserId" resultType="com.shortvideo.pojo.entity.UserHigh">
+        select id, username, nickname, password, avatar_url, signature, follow_count,follower_count,total_likes,role, status, created_time, updated_time from user_high
+        <where>
+            <if test="userId != null">id = #{userId}</if>
+        </where>
+    </select>
+    <select id="findByUsername" resultType="com.shortvideo.pojo.entity.UserHigh">
+        select id, username, nickname, password, avatar_url, signature, follow_count,follower_count,total_likes,role, status, created_time, updated_time from user_high
+        <where>
+            <if test="account != null">username = #{account}</if>
+        </where>
+    </select>
+    <select id="list" resultType="com.shortvideo.pojo.vo.user.UserListVO">
+       select id,nickname,avatar_url,follow_count,total_likes,status from user_high
+       <where>
+           <if test="lastId != null">id &lt; #{lastId}</if>
+--            <if test="size != null">limit #{size}</if>
+       </where>
+       order by id desc
+       limit #{size}
+    </select>
+</mapper>

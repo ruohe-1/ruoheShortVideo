@@ -1,0 +1,43 @@
+server:
+  port: 8080
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/ruohevideo?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.shortvideo.pojo.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# JWT 配置
+jwt:
+  secret: ruohe123456789012345678901234567
+  expiration: 604800000  # 7 天，单位毫秒
+
+# 文件上传路径（开发阶段本地存储）
+upload:
+  path: ./uploads/
+
+file:
+  upload-dir: D:\project-video-web\videos
