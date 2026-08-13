@@ -8,8 +8,7 @@ server:
 spring:
   datasource:
     url: jdbc:mysql://localhost:3306/ruohevideo?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-    username: root
-    password: 123456
+   
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   data:
@@ -32,7 +31,7 @@ mybatis:
 
 # JWT 配置
 jwt:
-  secret: ruohe123456789012345678901234567
+
   expiration: 604800000  # 7 天，单位毫秒
 
 # 文件上传路径（开发阶段本地存储）
