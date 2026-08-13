@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shortvideo.mapper.VideoMapper">
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        insert into video
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="categoryId != null">category_id,</if>
+            <if test="title != null">title,</if>
+            <if test="description != null">description,</if>
+            <if test="playUrl != null">play_url,</if>
+            <if test="coverUrl != null">cover_url,</if>
+            <if test="duration != null">duration,</if>
+            <if test="playCount != null">play_count,</if>
+            <if test="likeCount != null">like_count,</if>
+            <if test="commentCount != null">comment_count,</if>
+            <if test="shareCount != null">share_count,</if>
+            <if test="status != null">status,</if>
+            <if test="handlerId != null">handler_id,</if>
+        </trim>
+        values
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="userId != null">#{userId},</if>
+            <if test="categoryId != null">#{categoryId},</if>
+            <if test="title != null">#{title},</if>
+            <if test="description != null">#{description},</if>
+            <if test="playUrl != null">#{playUrl},</if>
+            <if test="coverUrl != null">#{coverUrl},</if>
+            <if test="duration != null">#{duration},</if>
+            <if test="playCount != null">#{playCount},</if>
+            <if test="likeCount != null">#{likeCount},</if>
+            <if test="commentCount != null">#{commentCount},</if>
+            <if test="shareCount != null">#{shareCount},</if>
+            <if test="status != null">#{status},</if>
+            <if test="handlerId != null">#{handlerId},</if>
+        </trim>
+    </insert>
+    <delete id="removeMyVideo">
+        delete from video where user_id = #{userId} and id != #{videoId}
+    </delete>
+
+    <select id="getVideoDataByUserId" resultType="com.shortvideo.pojo.vo.video.VideoCardVO">
+        select id as videoId, cover_url as coverUrl, play_url as playUrl, like_count as likeCount, status
+        from video
+        where user_id = #{userId}
+    </select>
+    <select id="recommendVideo" resultType="com.shortvideo.pojo.vo.video.VideoFeedVO">
+        select v.id as videoId, v.user_id as userId, u.nickname as nickName, u.avatar_url, v.category_id as categoryId, v.title, v.play_url as playUrl, v.cover_url as coverUrl, v.duration, v.like_count as likeCount, if(vl.video_id is not null, true, false) as isLiked, v.comment_count as commentCount, v.share_count as shareCount, v.created_time as createdTime
+        from video v
+        left join user_high u on v.user_id = u.id
+        left join video_like vl on v.id = vl.video_id and vl.user_id = #{userId}
+        where <if test="lastId != null">v.id &lt; #{lastId}  and </if> v.status = 1
+        order by v.id desc
+        limit #{size}
+    </select>
+    <select id="videoDetail" resultType="com.shortvideo.pojo.vo.video.VideoFeedVO">
+        select v.id as videoId, v.user_id as userId, u.nickname as nickName, u.avatar_url as avatarUrl, v.category_id as categoryId, v.title, v.play_url as playUrl, v.cover_url as coverUrl, v.duration, v.like_count as likeCount, if(vl.video_id is not null, true, false) as isLiked, v.comment_count as commentCount, v.share_count as shareCount, v.created_time as createdTime
+        from video v
+        left join user_high u on v.user_id = u.id
+        left join video_like vl on v.id = vl.video_id and vl.user_id = #{userId}
+        <where>
+            v.id = #{videoId}
+        </where>
+    </select>
+    <select id="searchVideo" resultType="com.shortvideo.pojo.vo.video.VideoSearchVO">
+        select v.id as videoId, v.user_id as userId, u.nickname as nickName,  v.title, v.play_url as playUrl, v.cover_url as coverUrl, v.duration, v.like_count as likeCount, if(vl.video_id is not null, true, false) as isLiked, v.created_time as createdTime
+        from video v
+        left join user_high u on v.user_id = u.id
+        left join video_like vl on vl.video_id = v.id and vl.user_id = #{userId}
+        <where>
+            <if test="category != null">
+                and v.category_id = #{category}
+            </if>
+            <if test="keyword != null">
+                and v.title like CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="lastId != null">
+                and v.id &lt; #{lastId}
+            </if>
+        </where>
+        order by v.id desc
+        limit #{size}
+    </select>
+</mapper>
