@@ -62,6 +62,12 @@
         </set>
         where id = #{userId}
     </update>
+    <update id="cancelFollow">
+        update user_high
+        set follower_count = follower_count - 1
+        where id = #{userId}
+          and follower_count > 0
+    </update>
 
     <select id="findByPhone" resultType="com.shortvideo.pojo.entity.UserLow">
         select id, user_id, phone, email, password_hash, last_login_at, last_login_ip, created_time, updated_time from user_low
@@ -82,12 +88,20 @@
         </where>
     </select>
     <select id="list" resultType="com.shortvideo.pojo.vo.user.UserListVO">
-       select id,nickname,avatar_url,follow_count,total_likes,status from user_high
-       <where>
-           <if test="lastId != null">id &lt; #{lastId}</if>
---            <if test="size != null">limit #{size}</if>
-       </where>
-       order by id desc
-       limit #{size}
+        select id,nickname,avatar_url,follow_count,total_likes,status from user_high
+        <where>
+            <if test="lastId != null">id &lt; #{lastId}</if>
+            --            <if test="size != null">limit #{size}</if>
+        </where>
+        order by id desc
+        limit #{size}
+    </select>
+    <select id="findByUserIds" resultType="com.shortvideo.pojo.entity.UserHigh">
+        select id, nickname as nickname,avatar_url as avatarUrl
+        from user_high
+        where id in
+        <foreach collection="userIdIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
     </select>
 </mapper>

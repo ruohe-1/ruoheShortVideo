@@ -6,8 +6,10 @@ import com.shortvideo.pojo.entity.UserLow;
 import com.shortvideo.pojo.vo.user.UserListVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
+import java.util.Set;
 
 
 @Mapper
@@ -68,4 +70,20 @@ public interface UserMapper {
     int updateUserInfo(UpdateProfileDTO updateProfileDTO);
 
     List<UserListVO> list(int size, Long lastId);
+    //博主粉丝数+1
+    @Update("update user_high set follower_count = follower_count + 1 where id = #{userId}")
+    void follow(Long userId);
+    //博主粉丝数-1
+    void cancelFollow(Long userId);
+    //用户关注数+1
+    @Update("update user_high set follow_count = follow_count + 1 where id = #{userId}")
+    void addFollowCount(Long userId);
+    //用户关注数-1
+    @Update("update user_high set follow_count = follow_count - 1 where id = #{userId} and follow_count > 0")
+    void reduceFollowCount(Long userId);
+
+    List<UserHigh> findByUserIds(Set<Long> userIdIds);
+    //根据用户id获取粉丝数
+    @Select("select follower_count from user_high where id = #{userId}")
+    Integer getFollowerCount(Long userId);
 }

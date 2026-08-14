@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shortvideo.mapper.SocialMapper">
+
+    <insert id="follow">
+      insert into follow (follower_id, followee_id)
+      values (#{current}, #{userId})
+    </insert>
+    <insert id="addComment" useGeneratedKeys="true" keyProperty="id">
+      insert into comment_root
+      <trim prefix="(" suffix=")" suffixOverrides=",">
+        <if test="videoId != null">video_id,</if>
+        <if test="userId != null">user_id,</if>
+        <if test="likeCount != null">like_count,</if>
+        <if test="content != null">content,</if>
+        <if test="createdTime != null">created_time</if>
+      </trim>
+      values
+      <trim prefix="(" suffix=")" suffixOverrides=",">
+        <if test="videoId != null">#{videoId},</if>
+        <if test="userId != null">#{userId},</if>
+        <if test="likeCount != null">#{likeCount},</if>
+        <if test="content != null">#{content},</if>
+        <if test="createdTime != null">#{createdTime}</if>
+      </trim>
+
+    </insert>
+    <insert id="addReply" useGeneratedKeys="true" keyProperty="id">
+        insert into comment_reply
+      <trim prefix="(" suffix=")" suffixOverrides=",">
+        <if test="commentId != null">comment_id,</if>
+        <if test="userId != null">user_id,</if>
+        <if test="replyUserId != null">reply_user_id,</if>
+        <if test="likeCount != null">like_count,</if>
+        <if test="content != null">content,</if>
+        <if test="createdTime != null">created_time</if>
+      </trim>
+      values
+      <trim prefix="(" suffix=")" suffixOverrides=",">
+        <if test="commentId != null">#{commentId},</if>
+        <if test="userId != null">#{userId},</if>
+        <if test="replyUserId != null">#{replyUserId},</if>
+        <if test="likeCount != null">#{likeCount},</if>
+        <if test="content != null">#{content},</if>
+        <if test="createdTime != null">#{createdTime}</if>
+      </trim>
+    </insert>
+    <delete id="deleteFollow">
+    delete from follow
+    where follower_id = #{current}
+    and followee_id = #{userId}
+    </delete>
+    <select id="commentList" resultType="com.shortvideo.pojo.entity.CommentRoot">
+        select * from comment_root
+        where video_id = #{videoId}
+        <if test="lastId != null">and id &lt; #{lastId}</if>
+        order by id desc
+        limit #{size}
+    </select>
+    <select id="selectRepliesByCommentIds" resultType="com.shortvideo.pojo.entity.CommentReply">
+        select * from comment_reply
+        where comment_id in
+        <foreach item="commentId" collection="commentIds" open="(" separator="," close=")">
+            #{commentId}
+        </foreach>
+        order by created_time desc
+    </select>
+    <select id="findCommentById" resultType="com.shortvideo.pojo.entity.CommentRoot">
+        select * from comment_root
+        where id = #{commentId}
+        and video_id = #{videoId}
+    </select>
+</mapper>

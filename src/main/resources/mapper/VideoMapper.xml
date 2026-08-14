@@ -39,9 +39,17 @@
             <if test="handlerId != null">#{handlerId},</if>
         </trim>
     </insert>
+    <update id="likeVideo">
+        update video set like_count = like_count + 1 where id = #{videoId}
+    </update>
     <delete id="removeMyVideo">
-        delete from video where user_id = #{userId} and id != #{videoId}
+        delete from video where user_id = #{userId} and id = #{videoId}
     </delete>
+    <update id="cancelLike">
+        update video set like_count = like_count - 1
+        where id = #{videoId}
+        and like_count > 0
+    </update>
 
     <select id="getVideoDataByUserId" resultType="com.shortvideo.pojo.vo.video.VideoCardVO">
         select id as videoId, cover_url as coverUrl, play_url as playUrl, like_count as likeCount, status
