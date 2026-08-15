@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
@@ -42,7 +43,9 @@ public class VideoServicesImpl implements VideoServices {
             String suffix = fileName.substring(fileName.lastIndexOf(".")); // 获取文件后缀
             String newFileName = UUID.randomUUID().toString().replace("-", "") + suffix;
             //2. 创建存储目录
-            String dataPath = LocalDateTime.now().toString();
+            //这里的dataPath格式为：2023-03-07T12:34:56.789 :会报错
+//            String dataPath = LocalDateTime.now().toString();
+            String dataPath = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
             File targetDir = new File(uploadDir+File.separator+dataPath);
             if(!targetDir.exists()) targetDir.mkdirs();
             //3. 保存文件到磁盘
@@ -51,7 +54,8 @@ public class VideoServicesImpl implements VideoServices {
             videoUploadDTO.getFile().transferTo(targetFile);//将上传的文件写入磁盘
 
             //4. 构造文件访问URL
-            String fileUrl = "/videos/" + dataPath + File.separator + newFileName;
+//            String fileUrl = "/videos/" + dataPath + File.separator + newFileName;
+            String fileUrl = "/videos/" + dataPath + "/" + newFileName;
             //5. 封装实体 保存数据库
             Video video = new Video();
             video.setUserId(userId);

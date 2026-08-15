@@ -8,7 +8,9 @@ import com.shortvideo.pojo.vo.video.VideoFeedVO;
 import com.shortvideo.pojo.vo.video.VideoSearchVO;
 import com.shortvideo.pojo.vo.video.VideoUploadVO;
 import com.shortvideo.services.VideoServices;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -18,8 +20,15 @@ public class VideoController {
     @Autowired
     private VideoServices videoServices;
     // 上传视频
+//    @PostMapping("/upload")
+//    public Result<VideoUploadVO> uploadVideo(@RequestBody VideoUploadDTO videoUploadDTO) {
+//        if(videoUploadDTO.getFile() == null) return Result.error(400, "文件不能为空");
+//        VideoUploadVO videoUploadVO = videoServices.upload(videoUploadDTO);
+//        return Result.success(videoUploadVO);
+//    }
+    @Validated
     @PostMapping("/upload")
-    public Result<VideoUploadVO> uploadVideo(@RequestBody VideoUploadDTO videoUploadDTO) {
+    public Result<VideoUploadVO> uploadVideo(@Valid @ModelAttribute VideoUploadDTO videoUploadDTO) {
         if(videoUploadDTO.getFile() == null) return Result.error(400, "文件不能为空");
         VideoUploadVO videoUploadVO = videoServices.upload(videoUploadDTO);
         return Result.success(videoUploadVO);

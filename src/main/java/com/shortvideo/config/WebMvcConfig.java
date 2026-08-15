@@ -48,8 +48,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
         // 本地文件访问映射
         // 将 /videos/** 映射到 file:D:/project-video-web/videos/
         // 注意：路径末尾必须带 /
-        registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:" + uploadDir + "/");
+        registry.addResourceHandler("/videos/**")
+                .addResourceLocations("file:///" + uploadDir.replace("\\", "/") + "/");
     }
 
 }
