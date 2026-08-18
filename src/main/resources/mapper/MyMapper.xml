@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shortvideo.mapper.MyMapper">
+
+    <select id="getMyVideoList" resultType="com.shortvideo.pojo.vo.my.MyVideoVO">
+        select v.id as videoId, v.category_id, v.description, v.play_url, v.cover_url, v.duration, v.title, vl.user_id is not null as is_liked, v.like_count, v.play_count, v.comment_count, v.share_count, v.status, v.created_time
+        from video v
+        left join video_like vl on vl.video_id = v.id and vl.user_id = #{userId}
+        <where>
+        <if test="lastId != null and lastId > 0">
+            v.id &lt; #{lastId}
+        </if>
+        <if test="userId != null">
+            and v.user_id = #{userId}
+        </if>
+        </where>
+        order by v.id desc
+        limit #{size}
+    </select>
+    <select id="getLikeVideoList" resultType="com.shortvideo.pojo.vo.my.MyLikeVideoVO">
+        select v.id as videoId, v.user_id, u.nickname, v.like_count, v.play_url, v.cover_url, v.duration, v.title, v.created_time
+        from video v
+        join user_high u on u.id = v.user_id
+        join video_like vl on vl.video_id = v.id and vl.user_id = #{userId}
+        <where>
+        <if test="lastId != null and lastId > 0">
+            v.id &lt; #{lastId}
+        </if>
+        </where>
+        order by v.id desc
+        limit #{size}
+    </select>
+    <select id="getMyFollowList" resultType="com.shortvideo.pojo.vo.my.MyFollowingVO">
+        select u.id as userId, u.nickname, u.avatar_url, u.signature, u.follow_count, u.follower_count, u.total_likes, u.role, u.created_time
+        from user_high u
+        join follow uf on uf.followee_id = u.id and uf.follower_id = #{userId}
+        <where>
+        <if test="lastId != null and lastId > 0">
+            u.id &lt; #{lastId}
+        </if>
+        </where>
+        order by u.id desc
+        limit #{size}
+    </select>
+    <select id="getMyFollowerList" resultType="com.shortvideo.pojo.vo.my.MyFollowersVO">
+        select u.id as userId, u.nickname, u.avatar_url, u.signature, u.follow_count, u.follower_count, u.total_likes, u.role, u.created_time
+        from user_high u
+        join follow uf on uf.follower_id = u.id and uf.followee_id = #{userId}
+        <where>
+        <if test="lastId != null and lastId > 0">
+            u.id &lt; #{lastId}
+        </if>
+        </where>
+        order by u.id desc
+        limit #{size}
+    </select>
+</mapper>
