@@ -20,7 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -62,8 +64,8 @@ public class VideoServicesImpl implements VideoServices {
             video.setTitle(videoUploadDTO.getTitle());
             video.setPlayUrl(fileUrl);
             video.setCoverUrl("");
-            video.setDuration(0);
-            video.setStatus(0);
+            video.setDuration(videoUploadDTO.getDuration() != null ? videoUploadDTO.getDuration() : 0);
+            video.setStatus(2);
             videoMapper.insert(video);
             return new VideoUploadVO(video.getId(), 0);
         }catch (Exception e){
@@ -88,6 +90,26 @@ public class VideoServicesImpl implements VideoServices {
 ////            if(videoFeedVO.getIsLiked() == null) videoFeedVO.setIsLiked(false); //或者在Mapper那直接 IFNULL(vl.is_liked, 0) as isLiked,
 //
 //        }
+        List<Long> userIds = videoFeedVOS.stream().map(VideoFeedVO::getUserId).toList();
+        //判断当前用户是否关注了这些用户 不能用这种方法了 原本是分别查用户是否关注Mapper层用的exists
+        //但是它只适用于返回单个布尔值 不适合批量获取每个用户的关注状态
+        //推荐使用 先查用户关注的id 然后判断是否在关注列表中
+//        List<Boolean> isFollowed = videoMapper.isFollowed(userIds, userId);
+//        for(int i = 0;i<videoFeedVOS.size();i++)
+//        {
+//            boolean followed = (isFollowed != null && i < isFollowed.size())
+//                                ? isFollowed.get(i) : false;
+//            videoFeedVOS.get(i).setIsFollowed(followed);
+//
+//        }
+        //搜索当前用户所有关注的用户id
+        List<Long> followedIds = videoMapper.getFollowedIds(userId);
+        //转为hashSet提高查找效率？
+        Set<Long> followedIdSet = new HashSet<>(followedIds);
+        //遍历视频列表 判断是否已关注
+        videoFeedVOS.forEach(videoFeedVO -> {
+            videoFeedVO.setIsFollowed(followedIdSet.contains(videoFeedVO.getUserId()));
+        });
         return new CursorPageVO<>(videoFeedVOS, newLastId, hasMore, size);
     }
 
@@ -126,4 +148,22 @@ public class VideoServicesImpl implements VideoServices {
         Long newLastId = videoSearchVOS.getLast().getVideoId();
         return new CursorPageVO<>(videoSearchVOS, newLastId, hasMore, size);
     }
-}
+    //二开：推送关注视频
+    @Override
+    public CursorPageVO<VideoFeedVO> followVideo(Long lastId, int size) {
+        Long userId = CurrentHolderUtil.getCurrent();
+        if(userId == null) return new CursorPageVO<>(null, 0L, false, size);
+        List<VideoFeedVO> videoFeedVOS = videoMapper.followVideo(lastId, size+1, userId);
+        if(videoFeedVOS.isEmpty()) return new CursorPageVO<>(videoFeedVOS, lastId, false, size);
+        boolean hasMore = false;
+        if(videoFeedVOS.size() > size )
+        {
+            hasMore = true;
+            videoFeedVOS.removeLast();
+        }
+        Long newLastId = videoFeedVOS.isEmpty() ? 0 : videoFeedVOS.getLast().getVideoId();
+        videoFeedVOS.forEach(videoFeedVO -> videoFeedVO.setIsFollowed(true));
+        return new CursorPageVO<>(videoFeedVOS, newLastId, hasMore, size);
+        }
+    }
+

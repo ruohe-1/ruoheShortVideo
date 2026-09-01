@@ -68,6 +68,11 @@
         where id = #{userId}
           and follower_count > 0
     </update>
+    <update id="freezeUserById" parameterType="java.lang.Long">
+        update user_high
+        set status = 2
+        where id = #{userId}
+    </update>
 
     <select id="findByPhone" resultType="com.shortvideo.pojo.entity.UserLow">
         select id, user_id, phone, email, password_hash, last_login_at, last_login_ip, created_time, updated_time from user_low
@@ -90,7 +95,7 @@
     <select id="list" resultType="com.shortvideo.pojo.vo.user.UserListVO">
         select id,nickname,avatar_url,follow_count,total_likes,status from user_high
         <where>
-            <if test="lastId != null">id &lt; #{lastId}</if>
+            <if test="lastId != null and lastId > 0">id &lt; #{lastId}</if>
             --            <if test="size != null">limit #{size}</if>
         </where>
         order by id desc
@@ -101,6 +106,14 @@
         from user_high
         where id in
         <foreach collection="userIdIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+    </select>
+    <select id="findByUserIdsList" resultType="com.shortvideo.pojo.entity.UserHigh">
+        select id, nickname as nickname,avatar_url as avatarUrl
+        from user_high
+        where id in
+        <foreach collection="senderIds" item="userId" open="(" separator="," close=")">
             #{userId}
         </foreach>
     </select>

@@ -2,10 +2,7 @@ package com.shortvideo.services;
 
 import com.shortvideo.pojo.dto.social.CommentOrReplyDTO;
 import com.shortvideo.pojo.vo.CursorPageVO;
-import com.shortvideo.pojo.vo.social.CommentVO;
-import com.shortvideo.pojo.vo.social.FollowVO;
-import com.shortvideo.pojo.vo.social.LikeVO;
-import com.shortvideo.pojo.vo.social.ReplyVO;
+import com.shortvideo.pojo.vo.social.*;
 
 public interface SocialServices {
     LikeVO likeVideo(Long videoId);
@@ -25,4 +22,12 @@ public interface SocialServices {
     boolean deleteReply(Long videoId, Long commentId, Long commonReplyId);
 
     CursorPageVO<CommentVO> commentList(Long videoId, Long lastId, Integer size);
+
+    CommentLikeVO commentLike(Long commentId);
+
+    CommentLikeVO commentCancelLike(Long commentId);
+
+    ReplyLikeVO replyLike(Long replyId,Long commentId);
+
+    ReplyLikeVO replyCancelLike(Long replyId, Long commentId);
 }

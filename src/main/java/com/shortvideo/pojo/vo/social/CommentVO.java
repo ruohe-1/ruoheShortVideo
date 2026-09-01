@@ -20,4 +20,5 @@ public class CommentVO {
     private Integer likeCount;
     private LocalDateTime createdTime;
     private List<ReplyVO> replies;
+    private boolean isLiked;
 }

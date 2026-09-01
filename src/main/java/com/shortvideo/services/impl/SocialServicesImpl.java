@@ -2,18 +2,18 @@ package com.shortvideo.services.impl;
 
 import com.shortvideo.mapper.*;
 import com.shortvideo.pojo.dto.social.CommentOrReplyDTO;
+import com.shortvideo.pojo.dto.social.UserIdAndVideoId;
 import com.shortvideo.pojo.entity.CommentReply;
 import com.shortvideo.pojo.entity.CommentRoot;
+import com.shortvideo.pojo.entity.LikeRecord;
 import com.shortvideo.pojo.entity.UserHigh;
 import com.shortvideo.pojo.vo.CursorPageVO;
-import com.shortvideo.pojo.vo.social.CommentVO;
-import com.shortvideo.pojo.vo.social.FollowVO;
-import com.shortvideo.pojo.vo.social.LikeVO;
-import com.shortvideo.pojo.vo.social.ReplyVO;
+import com.shortvideo.pojo.vo.social.*;
 import com.shortvideo.services.SocialServices;
 import com.shortvideo.util.CurrentHolderUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +35,8 @@ public class SocialServicesImpl implements SocialServices {
     private UserMapper userMapper;
     @Autowired
     private FollowMapper followMapper;
-
+    @Autowired
+    private NotificationSenderServices notificationSenderServices;
     @Transactional
     @Override
     public LikeVO likeVideo(Long videoId) {
@@ -55,12 +56,18 @@ public class SocialServicesImpl implements SocialServices {
             videoMapper.likeVideo(videoId);
             //4. 写入视频点赞表
             videoLikeMapper.insert(videoId, CurrentHolderUtil.getCurrent());
+            //4.1 让该视频作者总点赞数+1
+            Long userId = videoMapper.getVideoUserId(videoId);
+            userMapper.updateLikeCount(userId,1);
             //5. 封装返回数据
             Integer likeCount = videoMapper.getLikeCount(videoId);
             LikeVO likeVO = new LikeVO();
             likeVO.setVideoId(videoId);
             likeVO.setIsLiked(true);
             likeVO.setLikeCount(likeCount);
+            //6. 发送通知
+            notificationSenderServices.sendVideoLikeNotification(userId, CurrentHolderUtil.getCurrent(), videoId);
+            //7. 返回数据
             return likeVO;
         }catch (Exception e)
         {
@@ -82,6 +89,8 @@ public class SocialServicesImpl implements SocialServices {
             videoMapper.cancelLike(videoId);
             //4. 点赞记录表删除
             videoLikeMapper.deleteByVideoIdAndUserId(videoId, CurrentHolderUtil.getCurrent());
+            Long userId = videoMapper.getVideoUserId(videoId);
+            userMapper.updateLikeCount(userId,-1);
             //5. 封装返回数据
             Integer likeCount = videoMapper.getLikeCount(videoId);
             LikeVO likeVO = new LikeVO();
@@ -123,6 +132,9 @@ public class SocialServicesImpl implements SocialServices {
             followVO.setUserId(userId);
             followVO.setIsFollowed(true);
             followVO.setFollowerCount(followerCount);
+            //7. 发送通知
+            notificationSenderServices.sendFollowNotification(userId, CurrentHolderUtil.getCurrent());
+            //8.
             return followVO;
         }catch (Exception e)
         {
@@ -177,6 +189,8 @@ public class SocialServicesImpl implements SocialServices {
             commentRoot.setVideoId(videoId);
             commentRoot.setCreatedTime(LocalDateTime.now());
             socialMapper.addComment(commentRoot);
+            //视频表的评论数加1
+            videoMapper.updateCommentCount(videoId, 1);
             //4. 查找并封装返回数据
             CommentVO commentVO = new CommentVO();
             UserHigh userHigh = userMapper.findByUserId(commentRoot.getUserId());
@@ -187,6 +201,10 @@ public class SocialServicesImpl implements SocialServices {
             commentVO.setContent(commentRoot.getContent());
             commentVO.setLikeCount(commentRoot.getLikeCount());
             commentVO.setCreatedTime(commentRoot.getCreatedTime());
+            commentVO.setLiked(false);
+            //5. 发送通知
+            Long userId = videoMapper.getVideoUserId(videoId);
+            notificationSenderServices.sendCommentNotification(userId, CurrentHolderUtil.getCurrent(), commentRoot.getId(),videoId, content);
             return commentVO;
         }catch (Exception e)
         {
@@ -218,9 +236,10 @@ public class SocialServicesImpl implements SocialServices {
         if(!isCommentAuthor && !isModerator && !isAuthor) return false;
         try{
             //3. 存在 则删除该评论还有该评论下的回复
-            socialMapper.deleteComment(commentId);
+            int row1 = socialMapper.deleteComment(commentId);
             //4. 删除回复/子评论
-            socialMapper.deleteReplyByCommentId(commentId);
+            int row2 = socialMapper.deleteReplyByCommentId(commentId);
+            videoMapper.updateCommentCount(videoId, -(row2+row1));
             return true;
         }catch (Exception e)
         {
@@ -228,7 +247,8 @@ public class SocialServicesImpl implements SocialServices {
             return false;
         }
     }
-
+    //添加回复
+    @Transactional
     @Override
     public ReplyVO addReply(Long videoId, Long commentId, CommentOrReplyDTO commentOrReplyDTO) {
         //1. 判断该视频是否存在
@@ -257,6 +277,8 @@ public class SocialServicesImpl implements SocialServices {
             commentReply.setContent(commentOrReplyDTO.getContent());
             commentReply.setCreatedTime(LocalDateTime.now());
             socialMapper.addReply(commentReply);
+            //更新评论数
+            videoMapper.updateCommentCount(videoId, 1);
             //5. 查找并封装返回数据
             UserHigh userHigh = userMapper.findByUserId(commentReply.getUserId());
 
@@ -274,6 +296,12 @@ public class SocialServicesImpl implements SocialServices {
             replyVO.setContent(commentReply.getContent());
             replyVO.setLikeCount(commentReply.getLikeCount());
             replyVO.setCreatedTime(commentReply.getCreatedTime());
+            replyVO.setLiked(false);
+            //6. 发送通知
+            notificationSenderServices.sendReplyNotification(commentReply.getReplyUserId(),
+                    CurrentHolderUtil.getCurrent(),
+                    commentReply.getId(),videoId,
+                    commentOrReplyDTO.getContent());
             return replyVO;
         }catch (Exception e)
         {
@@ -282,6 +310,7 @@ public class SocialServicesImpl implements SocialServices {
         }
     }
     //删除回复
+    @Transactional
     @Override
     public boolean deleteReply(Long videoId, Long commentId, Long commonReplyId) {
         //1. 判断该视频是否存在
@@ -315,11 +344,14 @@ public class SocialServicesImpl implements SocialServices {
         //7.2 检查该评论是否属于传入的videoId
         if(socialMapper.findCommentById(commentId, videoId) == null) return false;
         socialMapper.deleteReplyByReplyId(commonReplyId);
+        //8. 更新评论数
+        videoMapper.updateCommentCount(videoId, -1);
         return true;
     }
     //由于性能问题 这里用foreach+map的处理方式 不用n+1查询
     @Override
     public CursorPageVO<CommentVO> commentList(Long videoId, Long lastId, Integer size) {
+        Long userId = CurrentHolderUtil.getCurrent();
         //1. 判断该视频是否存在
         if(!videoMapper.existsVideoById(videoId))
         {
@@ -343,7 +375,7 @@ public class SocialServicesImpl implements SocialServices {
                 .map(CommentRoot::getId)
                 .toList();
 
-        //5. 批量查询所有回复 这里得改 如果commentId不存在则不查询 否则会sql错误
+        //5. 批量查询所有回复 这里得改 如果commentIds不存在则不查询 否则会sql错误
 //        List<CommentReply> replies = socialMapper.selectRepliesByCommentIds(commentIds);
         List<CommentReply> replies = commentIds.isEmpty() ? new ArrayList<>() : socialMapper.selectRepliesByCommentIds(commentIds);
         //6. 按照评论ID分组
@@ -363,6 +395,30 @@ public class SocialServicesImpl implements SocialServices {
         List<UserHigh> userHighs = userMapper.findByUserIds(userIdIds);
         Map<Long,UserHigh> userHighMap = userHighs.stream()
                 .collect(Collectors.toMap(UserHigh::getId, user->user));
+        //8.1 批量查询点赞状态 不在原有上面改了
+        Set<Long> likedCommentIds = new HashSet<>();
+        Set<Long> likedReplyIds = new HashSet<>();
+        if(userId != null)//登录情况下
+        {
+            if(!commentIds.isEmpty())//评论ID列表不为空
+            {
+                List<Long> list = socialMapper.getLikedCommentIds(userId, commentIds);//获取点赞的评论ID列表
+                if(list != null && !list.isEmpty())
+                {
+                    likedCommentIds.addAll(list);//添加到点赞的评论ID列表中
+                }
+            }
+            //提取所有回复的ID
+            List<Long> replyIds = replies.stream().map(CommentReply::getId).toList();
+            if(!replyIds.isEmpty())
+            {
+                List<Long> list = socialMapper.getLikedReplyIds(userId, replyIds);//获取点赞的回复ID列表
+                if(list != null && !list.isEmpty())
+                {
+                    likedReplyIds.addAll(list);//添加到点赞的回复ID列表中
+                }
+            }
+        }
         //9. 封装commmentVO
         List<CommentVO> records = commentRootList.stream().map(c ->{
             CommentVO commentVO = new CommentVO();
@@ -375,6 +431,8 @@ public class SocialServicesImpl implements SocialServices {
             commentVO.setContent(c.getContent());
             commentVO.setCreatedTime(c.getCreatedTime());
             commentVO.setLikeCount(c.getLikeCount());
+            //设置是否点赞
+            commentVO.setLiked(likedCommentIds.contains(c.getId()));
             //10. 封装该评论下的回复列表
             List<CommentReply> replyVOList = replyMap.getOrDefault(c.getId(), new ArrayList<>());
             //11. 组装评论列表
@@ -396,6 +454,8 @@ public class SocialServicesImpl implements SocialServices {
                    UserHigh targetUserHigh = userHighMap.get(r.getReplyUserId());
                    replyVO.setReplyNickName(targetUserHigh != null ? targetUserHigh.getNickname() : "未知");
                 }
+                //设置是否点赞
+                replyVO.setLiked(likedReplyIds.contains(r.getId()));
                 return replyVO;
             }).toList();
             commentVO.setReplies(replyVOS);
@@ -406,4 +466,142 @@ public class SocialServicesImpl implements SocialServices {
 
         return new CursorPageVO<>(records, newLastId, hasMore, size);
     }
+    //二开 评论点赞
+    @Transactional
+    @Override
+    public CommentLikeVO commentLike(Long commentId) {
+        if(commentId == null) return null;
+        //1. 判断用户是否登录
+        Long userId = CurrentHolderUtil.getCurrent();
+        if(userId == null) return null;
+        //2. 判断评论是否存在
+        boolean b = socialMapper.existsCommentById(commentId);
+        if(!b) return null;
+        //3. 插入记录
+       boolean success = doLiked(userId, commentId, 1);
+       if(!success)
+       {
+           return new CommentLikeVO(commentId, socialMapper.getCommentLikeCount(commentId), true);
+       }
+       //4. 更新评论点赞数
+        socialMapper.updateCommentLikeCount(commentId,1);
+       Long likeCount = socialMapper.getCommentLikeCount(commentId);
+       CommentLikeVO commentLikeVO = new CommentLikeVO();
+       commentLikeVO.setCommentId(commentId);
+       commentLikeVO.setLikeCount(likeCount);
+       commentLikeVO.setIsLiked(true);
+       //5. 发送通知
+        UserIdAndVideoId detail = socialMapper.getCommentUserIdAndVideoId(commentId);
+        if(detail != null)
+        {
+            notificationSenderServices.sendCommentLikeNotification(detail.getUserId(), userId, commentId, detail.getVideoId());
+        }
+       return commentLikeVO;
+    }
+    //二开 评论取消点赞
+    @Transactional
+    @Override
+    public CommentLikeVO commentCancelLike(Long commentId) {
+        //1. 判断用户是否登录
+        Long userId = CurrentHolderUtil.getCurrent();
+        if(userId == null) return null;
+        //2. 判断评论是否存在
+        boolean b = socialMapper.existsCommentById(commentId);
+        if(!b) return null;
+        //3. 删除记录
+        int rows = socialMapper.deleteLikeRecord(userId, commentId, 1);
+        if(rows == 0)
+        {
+            return new CommentLikeVO(commentId, socialMapper.getCommentLikeCount(commentId), false);
+        }
+        //4. 评论数更新
+        socialMapper.updateCommentLikeCount(commentId,-1);
+        //5. 返回结果
+        return new CommentLikeVO(commentId, socialMapper.getCommentLikeCount(commentId), false);
+    }
+    //二开 回复点赞
+    @Transactional
+    @Override
+    public ReplyLikeVO replyLike(Long replyId, Long commentId) {
+        //1. 判断用户是否登录
+        Long userId = CurrentHolderUtil.getCurrent();
+        if(userId == null) return null;
+        //2. 判断评论是否存在
+        boolean b = socialMapper.existsCommentById(commentId);
+        if(!b) return null;
+        //3. 判断回复是否存在
+        boolean b2 = socialMapper.existsReplyById(replyId);
+        if(!b2) return null;
+        boolean success = doLiked(userId, replyId, 2);
+        if(!success)
+        {
+            return new ReplyLikeVO(replyId, socialMapper.getReplyLikeCount(replyId), true);
+        }
+        //4. 更新回复点赞数
+        socialMapper.updateReplyLikeCount(replyId,1);
+        //5. 发送通知
+        //获取回复的对象ID 评论的对象ID 视频ID
+        UserIdAndVideoId detail = socialMapper.getReplyUserIdAndVideoId(replyId,userId);
+        notificationSenderServices.sendCommentLikeNotification(detail.getReplyUserId(), userId, replyId, detail.getVideoId());
+        return new ReplyLikeVO(replyId, socialMapper.getReplyLikeCount(replyId), true);
+    }
+
+
+    //二开 回复取消点赞
+    @Transactional
+    @Override
+    public ReplyLikeVO replyCancelLike(Long replyId, Long commentId) {
+        //1. 判断用户是否登录
+        Long userId = CurrentHolderUtil.getCurrent();
+        if(userId == null) return null;
+        //2. 判断评论是否存在
+        boolean b = socialMapper.existsCommentById(commentId);
+        if(!b) return null;
+        //3. 判断回复是否存在
+        boolean b2 = socialMapper.existsReplyById(replyId);
+        if(!b2) return null;
+        //4. 删除记录
+        int rows = socialMapper.deleteLikeRecord(userId, replyId, 2);
+        if(rows == 0)
+        {
+            return new ReplyLikeVO(replyId, socialMapper.getReplyLikeCount(replyId), false);
+        }
+        //5. 更新回复点赞数
+        socialMapper.updateReplyLikeCount(replyId,-1);
+        //6. 返回结果
+        return new ReplyLikeVO(replyId, socialMapper.getReplyLikeCount(replyId), false);
+    }
+
+    private boolean doLiked(Long userId, Long targetId, int targetType) {
+       try{
+           LikeRecord likeRecord = new LikeRecord();
+           likeRecord.setUserId(userId);
+           likeRecord.setTargetId(targetId);
+           likeRecord.setTargetType(targetType);
+           likeRecord.setCreatedTime(LocalDateTime.now());
+           socialMapper.insertLikeRecord(likeRecord);// 如果已存在，会抛出 DuplicateKeyException
+       }catch (DuplicateKeyException e)
+       {
+           // 唯一约束冲突 → 已经点过赞
+           log.debug("用户 {} 已赞过 targetType={}, targetId={}", userId, targetType, targetId);
+           return false;
+       }
+       catch (Exception e)
+       {
+           log.error("点赞失败: userId={}, targetType={}, targetId={}", userId, targetType, targetId, e);
+           throw new RuntimeException("点赞失败，请稍后重试", e);
+       }
+       return true;
+    }
+    private boolean doCancelLiked(Long userId, Long targetId, int targetType) {
+       try{
+           socialMapper.deleteLikeRecord(userId, targetId, targetType);
+       }catch (Exception e)
+       {
+           log.error("取消点赞失败: userId={}, targetType={}, targetId={}", userId, targetType, targetId, e);
+           throw new RuntimeException("取消点赞失败，请稍后重试", e);
+       }
+       return true;
+    }
+
 }

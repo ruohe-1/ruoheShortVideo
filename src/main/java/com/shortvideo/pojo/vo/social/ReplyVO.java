@@ -20,4 +20,5 @@ public class ReplyVO {
     private String content;
     private Integer likeCount;
     private LocalDateTime createdTime;
+    private boolean isLiked;
 }

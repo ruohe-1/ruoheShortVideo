@@ -23,4 +23,6 @@ public interface VideoServices {
     Boolean removeMyVideo(Long videoId);
 
     CursorPageVO<VideoSearchVO> searchVideo(String keyword, Long lastId, int size, String category);
+
+    CursorPageVO<VideoFeedVO> followVideo(Long lastId, int size);
 }

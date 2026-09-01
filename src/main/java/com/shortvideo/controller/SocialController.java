@@ -4,10 +4,7 @@ package com.shortvideo.controller;
 import com.shortvideo.common.Result;
 import com.shortvideo.pojo.dto.social.CommentOrReplyDTO;
 import com.shortvideo.pojo.vo.CursorPageVO;
-import com.shortvideo.pojo.vo.social.CommentVO;
-import com.shortvideo.pojo.vo.social.FollowVO;
-import com.shortvideo.pojo.vo.social.LikeVO;
-import com.shortvideo.pojo.vo.social.ReplyVO;
+import com.shortvideo.pojo.vo.social.*;
 import com.shortvideo.services.SocialServices;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -88,5 +85,36 @@ public class SocialController {
         CursorPageVO<CommentVO> commentVOCursorPageVO = socialServices.commentList(videoId, lastId, size);
         if(commentVOCursorPageVO.getRecords().isEmpty()) return Result.success(null);
         return Result.success(commentVOCursorPageVO);
+    }
+    //二开：
+    //评论点赞
+    @PostMapping("/comment/like")
+    public Result<CommentLikeVO> commentLike(@RequestParam(name = "commentId") Long commentId) {
+        CommentLikeVO commentLikeVO = socialServices.commentLike(commentId);
+        if(commentLikeVO == null) return Result.error(400, "评论点赞失败");
+        return Result.success(commentLikeVO);
+    }
+    //评论取消点赞
+    @DeleteMapping("/comment/like")
+    public Result<CommentLikeVO> commentCancelLike(@RequestParam(name = "commentId") Long commentId) {
+        CommentLikeVO commentLikeVO = socialServices.commentCancelLike(commentId);
+        if(commentLikeVO == null) return Result.error(400, "评论取消点赞失败");
+        return Result.success(commentLikeVO);
+    }
+    //回复点赞
+    @PostMapping("/reply/like")
+    public Result<ReplyLikeVO> replyLike(@RequestParam(name = "replyId") Long replyId,
+                                         @RequestParam(name = "commentId") Long commentId) {
+        ReplyLikeVO replyLikeVO = socialServices.replyLike(replyId, commentId);
+        if(replyLikeVO == null) return Result.error(400, "回复点赞失败");
+        return Result.success(replyLikeVO);
+    }
+    //回复取消点赞
+    @DeleteMapping("/reply/like")
+    public Result<ReplyLikeVO> replyCancelLike(@RequestParam(name = "replyId") Long replyId,
+                                               @RequestParam(name = "commentId") Long commentId) {
+        ReplyLikeVO replyLikeVO = socialServices.replyCancelLike(replyId, commentId);
+        if(replyLikeVO == null) return Result.error(400, "回复取消点赞失败");
+        return Result.success(replyLikeVO);
     }
 }

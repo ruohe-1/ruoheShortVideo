@@ -5,6 +5,7 @@ import com.shortvideo.pojo.entity.UserHigh;
 import com.shortvideo.pojo.entity.UserLow;
 import com.shortvideo.pojo.vo.user.UserListVO;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
@@ -86,4 +87,12 @@ public interface UserMapper {
     //根据用户id获取粉丝数
     @Select("select follower_count from user_high where id = #{userId}")
     Integer getFollowerCount(Long userId);
+
+    //冻结用户(审核模块)
+    void freezeUserById(Long targetId);
+    //更新用户点赞数
+    @Update("update user_high set total_likes = total_likes + #{i} where id = #{userId}")
+    void updateLikeCount(@Param("userId") Long userId,@Param("i") int i);
+
+    List<UserHigh> findByUserIdsList(List<Long> senderIds);
 }

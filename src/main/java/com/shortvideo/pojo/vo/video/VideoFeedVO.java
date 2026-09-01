@@ -19,6 +19,7 @@ public class VideoFeedVO {
     private Integer duration;
     private Long likeCount;
     private Boolean isLiked;
+    private Boolean isFollowed;
     private Long commentCount;
     private Long shareCount;
     private LocalDateTime createdTime;

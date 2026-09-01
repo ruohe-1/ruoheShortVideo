@@ -70,5 +70,13 @@ public class VideoController {
         if(videoSearchVOCursorPageVO.getRecords().isEmpty()) return Result.success(null);
         return Result.success(videoSearchVOCursorPageVO);
     }
+    //二开：关注推送流
+    @GetMapping("/follow")
+    public Result<CursorPageVO<VideoFeedVO>> followVideo(@RequestParam(required = false) Long lastId,
+                                                        @RequestParam(defaultValue = "10", required = false,name = "size") int size) {
+        CursorPageVO<VideoFeedVO> videoFeedVOCursorPageVO = videoServices.followVideo(lastId,size);
+        if(videoFeedVOCursorPageVO.getRecords().isEmpty()) return Result.success(null);
+        return Result.success(videoFeedVOCursorPageVO);
+    }
 
 }

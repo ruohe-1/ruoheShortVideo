@@ -13,4 +13,5 @@ public class VideoUploadDTO {
     private String title;
     private Integer categoryId;
     private String cover;
+    private Integer duration;  // 视频时长（秒），由前端通过 HTML5 Video API 提取后传入
 }

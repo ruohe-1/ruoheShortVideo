@@ -57,19 +57,21 @@
         where user_id = #{userId}
     </select>
     <select id="recommendVideo" resultType="com.shortvideo.pojo.vo.video.VideoFeedVO">
-        select v.id as videoId, v.user_id as userId, u.nickname as nickName, u.avatar_url, v.category_id as categoryId, v.title, v.play_url as playUrl, v.cover_url as coverUrl, v.duration, v.like_count as likeCount, if(vl.video_id is not null, true, false) as isLiked, v.comment_count as commentCount, v.share_count as shareCount, v.created_time as createdTime
+        select v.id as videoId, v.user_id as userId, u.nickname as nickName, u.avatar_url, v.category_id as categoryId, v.title, v.play_url as playUrl, v.cover_url as coverUrl, v.duration, v.like_count as likeCount, if(vl.video_id is not null, true, false) as isLiked, if(f.id is not null, true, false) as isFollowed, v.comment_count as commentCount, v.share_count as shareCount, v.created_time as createdTime
         from video v
         left join user_high u on v.user_id = u.id
         left join video_like vl on v.id = vl.video_id and vl.user_id = #{userId}
-        where <if test="lastId != null">v.id &lt; #{lastId}  and </if> v.status = 1
+        left join follow f on v.user_id = f.followee_id and f.follower_id = #{userId}
+        where <if test="lastId != null and lastId > 0">v.id &lt; #{lastId} and </if> v.status = 1
         order by v.id desc
         limit #{size}
     </select>
     <select id="videoDetail" resultType="com.shortvideo.pojo.vo.video.VideoFeedVO">
-        select v.id as videoId, v.user_id as userId, u.nickname as nickName, u.avatar_url as avatarUrl, v.category_id as categoryId, v.title, v.play_url as playUrl, v.cover_url as coverUrl, v.duration, v.like_count as likeCount, if(vl.video_id is not null, true, false) as isLiked, v.comment_count as commentCount, v.share_count as shareCount, v.created_time as createdTime
+        select v.id as videoId, v.user_id as userId, u.nickname as nickName, u.avatar_url as avatarUrl, v.category_id as categoryId, v.title, v.play_url as playUrl, v.cover_url as coverUrl, v.duration, v.like_count as likeCount, if(vl.video_id is not null, true, false) as isLiked, if(f.id is not null, true, false) as isFollowed, v.comment_count as commentCount, v.share_count as shareCount, v.created_time as createdTime
         from video v
         left join user_high u on v.user_id = u.id
         left join video_like vl on v.id = vl.video_id and vl.user_id = #{userId}
+        left join follow f on v.user_id = f.followee_id and f.follower_id = #{userId}
         <where>
             v.id = #{videoId}
         </where>
@@ -86,11 +88,68 @@
             <if test="keyword != null">
                 and v.title like CONCAT('%', #{keyword}, '%')
             </if>
-            <if test="lastId != null">
+            <if test="lastId != null and lastId > 0">
                 and v.id &lt; #{lastId}
             </if>
         </where>
         order by v.id desc
         limit #{size}
+    </select>
+    <select id="findPendingVideos" resultType="com.shortvideo.pojo.vo.internal.InternalVideoVO">
+        select
+        v.id as videoId, v.user_id as userId, u.nickname as nickName, u.avatar_url as avatarUrl, v.category_id as categoryId, v.title, v.play_url as playUrl, v.cover_url as coverUrl, v.duration, v.status, v.created_time as createdTime
+        from video v
+        left join user_high u on v.user_id = u.id
+        where v.status = 2
+        <if test="lastId != null and lastId > 0">
+            and v.id &lt; #{lastId}
+        </if>
+        order by v.id desc
+        limit #{size}
+    </select>
+    <select id="getVideoDetail" resultType="com.shortvideo.pojo.vo.internal.InternalVideoVO"
+            parameterType="java.lang.Long">
+        select
+        v.id as videoId, v.user_id as userId, u.nickname as nickName, u.avatar_url as avatarUrl, v.category_id as categoryId, v.title, v.play_url as playUrl, v.cover_url as coverUrl, v.duration, v.status, v.created_time as createdTime
+        from video v
+        left join user_high u on v.user_id = u.id
+        where v.id = #{videoId}
+    </select>
+    <select id="isFollowed" resultType="java.lang.Boolean">
+        select exists(select 1
+        from follow
+        where follower_id = #{currUserId}
+        and followee_id in
+            <foreach collection="userIds" separator="," open="(" close=")" item="userId">
+            #{userId}
+            </foreach>
+        )
+    </select>
+    <select id="followVideo" resultType="com.shortvideo.pojo.vo.video.VideoFeedVO">
+        select v.id as videoId, v.user_id as userId, u.nickname as nickName, u.avatar_url,
+        v.category_id as categoryId, v.title, v.play_url as playUrl, v.cover_url as coverUrl,
+        v.duration, v.like_count as likeCount,
+        if(vl.video_id is not null, true, false) as isLiked,
+        v.comment_count as commentCount, v.share_count as shareCount, v.created_time as createdTime
+        from follow f
+        join video v on v.user_id = f.followee_id and v.status = 1
+        left join user_high u on v.user_id = u.id
+        left join video_like vl on v.id = vl.video_id and vl.user_id = #{userId}
+        where f.follower_id = #{userId}
+        <if test="lastId != null"> and v.id &lt; #{lastId}</if>
+        order by v.id desc
+        limit #{size}
+    </select>
+    <select id="getVideoCardListByVideoIds" resultType="com.shortvideo.pojo.vo.video.VideoFeedVO">
+        select id as videoId, title, cover_url as coverUrl from video
+        <where>
+            id in
+            <foreach collection="videoIds" separator="," open="(" close=")" item="videoId">
+            #{videoId}
+            </foreach>
+        </where>
+    </select>
+    <select id="getFollowedIds" resultType="java.lang.Long" parameterType="java.lang.Long">
+        select followee_id from follow where follower_id = #{userId}
     </select>
 </mapper>

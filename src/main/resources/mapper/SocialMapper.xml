@@ -53,9 +53,11 @@
     and followee_id = #{userId}
     </delete>
     <select id="commentList" resultType="com.shortvideo.pojo.entity.CommentRoot">
-        select * from comment_root
-        where video_id = #{videoId}
-        <if test="lastId != null">and id &lt; #{lastId}</if>
+        select *
+        from comment_root
+        where
+        <if test="videoId != null">video_id = #{videoId}</if>
+        <if test="lastId != null and lastId > 0">and id &lt; #{lastId}</if>
         order by id desc
         limit #{size}
     </select>
@@ -71,5 +73,32 @@
         select * from comment_root
         where id = #{commentId}
         and video_id = #{videoId}
+    </select>
+    <select id="getReplyUserIdAndVideoId" resultType="com.shortvideo.pojo.dto.social.UserIdAndVideoId">
+        select r.reply_user_id as replyUserId, c.video_id as videoId
+        from comment_reply r
+        join comment_root c on r.comment_id = c.id
+        where r.id = #{replyId}
+        and r.user_id = #{userId}
+    </select>
+    <select id="getLikedCommentIds" resultType="java.lang.Long">
+        select target_id
+        from like_record
+        where user_id = #{userId}
+        and target_type = 1
+        and target_id in
+        <foreach item="commentId" collection="commentIds" open="(" separator="," close=")">
+            #{commentId}
+        </foreach>
+    </select>
+    <select id="getLikedReplyIds" resultType="java.lang.Long">
+        select target_id
+        from like_record
+        where user_id = #{userId}
+        and target_type = 2
+        and target_id in
+        <foreach item="replyId" collection="replyIds" open="(" separator="," close=")">
+            #{replyId}
+        </foreach>
     </select>
 </mapper>
