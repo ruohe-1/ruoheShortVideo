@@ -1,11 +1,15 @@
 package com.shortvideo.interceptor;
 
 import com.shortvideo.util.JwtUtil;
+import com.shortvideo.util.RedisCacheUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import com.shortvideo.util.CurrentHolderUtil;
+
+import java.util.concurrent.TimeUnit;
+
 @Component
 public class JwtInterceptor implements HandlerInterceptor {
 
@@ -16,7 +20,6 @@ public class JwtInterceptor implements HandlerInterceptor {
     public JwtInterceptor(JwtUtil jwtUtil) {
         this.jwtUtil = jwtUtil;
     }
-
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         // 放行 OPTIONS 预检请求

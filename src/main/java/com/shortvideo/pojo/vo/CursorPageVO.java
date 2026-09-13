@@ -1,6 +1,7 @@
 package com.shortvideo.pojo.vo;
 
 
+import com.shortvideo.pojo.vo.conversation.SearchResultVO;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

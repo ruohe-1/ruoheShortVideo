@@ -1,0 +1,563 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shortvideo.mapper.ConversationMapper">
+    <insert id="insertConversation" parameterType="com.shortvideo.pojo.entity.Conversation"
+     useGeneratedKeys="true" keyProperty="id">
+        insert into conversation
+        <trim suffixOverrides="," prefix="(" suffix=")">
+         <if test="id != null">
+            id,
+        </if>
+        <if test="user1Id != null">
+            user1_id,
+        </if>
+        <if test="user2Id != null">
+            user2_id,
+        </if>
+        <if test="lastMessage != null">
+            last_message,
+        </if>
+        <if test="lastMessageType != null">
+            last_message_type,
+        </if>
+        <if test="lastMessageTime != null">
+            last_message_time,
+        </if>
+        <if test="unreadCountUser1 != null">
+            unread_count_user1,
+        </if>
+        <if test="unreadCountUser2 != null">
+            unread_count_user2,
+        </if>
+        <if test="createdTime != null">
+            created_time,
+        </if>
+        <if test="updatedTime != null">
+            updated_time
+        </if>
+        </trim>
+        values
+        <trim suffixOverrides="," prefix="(" suffix=")">
+            <if test="id != null">
+                #{id},
+            </if>
+            <if test="user1Id != null">
+                #{user1Id},
+            </if>
+            <if test="user2Id != null">
+                #{user2Id},
+            </if>
+            <if test="lastMessage != null">
+                #{lastMessage},
+            </if>
+            <if test="lastMessageType != null">
+                #{lastMessageType},
+            </if>
+            <if test="lastMessageTime != null">
+                #{lastMessageTime},
+            </if>
+            <if test="unreadCountUser1 != null">
+                #{unreadCountUser1},
+            </if>
+            <if test="unreadCountUser2 != null">
+                #{unreadCountUser2},
+            </if>
+            <if test="createdTime != null">
+                #{createdTime},
+            </if>
+            <if test="updatedTime != null">
+                #{updatedTime}
+            </if>
+        </trim>
+    </insert>
+    <insert id="insertMessage" parameterType="com.shortvideo.pojo.entity.Message"
+    useGeneratedKeys="true" keyProperty="id">
+        insert into message
+        <trim suffixOverrides="," prefix="(" suffix=")">
+        <if test="id != null">
+            id,
+        </if>
+        <if test="conversationId != null">
+            conversation_id,
+        </if>
+        <if test="senderId != null">
+            sender_id,
+        </if>
+        <if test="receiverId != null">
+            receiver_id,
+        </if>
+        <if test="type != null">
+            `type`,
+        </if>
+        <if test="content != null">
+            content,
+        </if>
+        <if test="status != null">
+            status,
+        </if>
+        <if test="createdTime != null">
+            created_time
+        </if>
+        </trim>
+        values
+        <trim suffixOverrides="," prefix="(" suffix=")">
+            <if test="id != null">
+                #{id},
+            </if>
+            <if test="conversationId != null">
+                #{conversationId},
+            </if>
+            <if test="senderId != null">
+                #{senderId},
+            </if>
+            <if test="receiverId != null">
+                #{receiverId},
+            </if>
+            <if test="type != null">
+                #{type},
+            </if>
+            <if test="content != null">
+                #{content},
+            </if>
+            <if test="status != null">
+                #{status},
+            </if>
+            <if test="createdTime != null">
+                #{createdTime}
+            </if>
+        </trim>
+    </insert>
+    <insert id="insertGroup" parameterType="com.shortvideo.pojo.entity.Group" useGeneratedKeys="true"
+     keyProperty="id">
+        insert into `group`
+        <trim suffixOverrides="," prefix="(" suffix=")">
+            <if test="id != null">
+                id,
+            </if>
+            <if test="ownerId != null">
+                owner_id,
+            </if>
+            <if test="name != null">
+                `name`,
+            </if>
+            <if test="avatarUrl != null">
+                avatar_url,
+            </if>
+            <if test="signature != null">
+                signature,
+            </if>
+            <if test="memberCount != null">
+                member_count,
+            </if>
+            <if test="lastMessage != null">
+                last_message,
+            </if>
+            <if test="lastMessageType != null">
+                last_message_type,
+            </if>
+            <if test="lastMessageTime != null">
+                last_message_time,
+            </if>
+            <if test="status != null">
+                status,
+            </if>
+            <if test="createdTime != null">
+                created_time,
+            </if>
+            <if test="updatedTime != null">
+                updated_time
+            </if>
+        </trim>
+        values
+        <trim suffixOverrides="," prefix="(" suffix=")">
+            <if test="id != null">
+                #{id},
+            </if>
+            <if test="ownerId != null">
+                #{ownerId},
+            </if>
+            <if test="name != null">
+                #{name},
+            </if>
+            <if test="avatarUrl != null">
+                #{avatarUrl},
+            </if>
+            <if test="signature != null">
+                #{signature},
+            </if>
+            <if test="memberCount != null">
+                #{memberCount},
+            </if>
+            <if test="lastMessage != null">
+                #{lastMessage},
+            </if>
+            <if test="lastMessageType != null">
+                #{lastMessageType},
+            </if>
+            <if test="lastMessageTime != null">
+                #{lastMessageTime},
+            </if>
+            <if test="status != null">
+                #{status},
+            </if>
+            <if test="createdTime != null">
+                #{createdTime},
+            </if>
+            <if test="updatedTime != null">
+                #{updatedTime}
+            </if>
+        </trim>
+    </insert>
+    <insert id="insertGroupUser" parameterType="com.shortvideo.pojo.entity.GroupUser">
+        insert into group_user
+        <trim suffixOverrides="," prefix="(" suffix=")">
+            <if test="id != null">
+                id,
+            </if>
+            <if test="groupId != null">
+                group_id,
+            </if>
+            <if test="userId != null">
+                user_id,
+            </if>
+            <if test="role != null">
+                `role`,
+            </if>
+            <if test="unreadCount != null">
+                unread_count,
+            </if>
+            <if test="lastReadMessageId != null">
+                last_read_message_id,
+            </if>
+            <if test="type != null">
+                `type`,
+            </if>
+            <if test="createdTime != null">
+                created_time
+            </if>
+        </trim>
+        values
+        <trim suffixOverrides="," prefix="(" suffix=")">
+            <if test="id != null">
+                #{id},
+            </if>
+            <if test="groupId != null">
+                #{groupId},
+            </if>
+            <if test="userId != null">
+                #{userId},
+            </if>
+            <if test="role != null">
+                #{role},
+            </if>
+            <if test="unreadCount != null">
+                #{unreadCount},
+            </if>
+            <if test="lastReadMessageId != null">
+                #{lastReadMessageId},
+            </if>
+            <if test="type != null">
+                #{type},
+            </if>
+            <if test="createdTime != null">
+                #{createdTime}
+            </if>
+        </trim>
+    </insert>
+    <insert id="batchInsertGroupUser">
+        insert into group_user (group_id,user_id,role,type,unread_count,last_read_message_id,created_time)
+        values
+        <foreach collection="members" item="groupUser" separator=",">
+            (#{groupUser.groupId},#{groupUser.userId},#{groupUser.role},#{groupUser.type},#{groupUser.unreadCount},#{groupUser.lastReadMessageId},#{groupUser.createdTime})
+        </foreach>
+    </insert>
+    <insert id="insertGroupMessage" useGeneratedKeys="true" keyProperty="id">
+        insert into group_message
+        <trim suffixOverrides="," prefix="(" suffix=")">
+            <if test="id != null">
+                id,
+            </if>
+            <if test="groupId != null">
+                group_id,
+            </if>
+            <if test="senderId != null">
+                sender_id,
+            </if>
+            <if test="type != null">
+                `type`,
+            </if>
+            <if test="content != null">
+                content,
+            </if>
+            <if test="isRecalled != null">
+                is_recalled,
+            </if>
+            <if test="updatedTime != null">
+                updated_time,
+            </if>
+            <if test="createdTime != null">
+                created_time
+            </if>
+        </trim>
+        values
+        <trim suffixOverrides="," prefix="(" suffix=")">
+            <if test="id != null">
+                #{id},
+            </if>
+            <if test="groupId != null">
+                #{groupId},
+            </if>
+            <if test="senderId != null">
+                #{senderId},
+            </if>
+            <if test="type != null">
+                #{type},
+            </if>
+            <if test="content != null">
+                #{content},
+            </if>
+            <if test="isRecalled != null">
+                #{isRecalled},
+            </if>
+            <if test="updatedTime != null">
+                #{updatedTime},
+            </if>
+            <if test="createdTime != null">
+                #{createdTime}
+            </if>
+        </trim>
+    </insert>
+    <update id="updateConversationRead">
+        update conversation
+        set unread_count_user1 = case when user1_id = #{userId} and id = #{conversationId} then 0
+                                      else unread_count_user1 end,
+            unread_count_user2 = case when user2_id = #{userId} and id = #{conversationId} then 0
+                                      else unread_count_user2 end
+        where (user1_id = #{userId} or user2_id = #{userId})
+        and id = #{conversationId}
+    </update>
+    <update id="updateMessageRead">
+        update message
+        set status = 2
+        where conversation_id = #{conversationId}
+        and status = 1
+        and receiver_id = #{userId}
+    </update>
+    <update id="updateLastMessage">
+        update conversation
+        set last_message = #{lastMessage},
+            last_message_time = #{now},
+            last_message_type = #{type},
+            updated_time = #{now}
+        where id = #{conversationId}
+    </update>
+    <update id="increaseUnread">
+        UPDATE conversation
+        SET
+            unread_count_user1 = unread_count_user1 +
+                                 CASE WHEN user1_id = #{receiverId} THEN 1 ELSE 0 END,
+            unread_count_user2 = unread_count_user2 +
+                                 CASE WHEN user2_id = #{receiverId} THEN 1 ELSE 0 END
+        WHERE id = #{conversationId}
+    </update>
+<!--    &#45;&#45;set语句不能用and 只能逗号-->
+    <update id="readGroupMessages">
+        update group_user
+        set unread_count = 0,last_read_message_id = #{lastReadMessageId}
+        where group_id = #{groupId}
+          and user_id = #{userId}
+        and last_read_message_id &lt; #{lastReadMessageId}
+    </update>
+<!--    &#45;&#45; 防止游标回退-->
+    <update id="updateGroupLastMessage">
+        update `group`
+        set last_message = #{content},
+            last_message_time = #{now},
+            last_message_type = #{type},
+            updated_time = #{now}
+        where id = #{groupId}
+    </update>
+    <update id="updateGroupUserUnreadCount">
+        UPDATE group_user
+        SET unread_count = unread_count + 1
+        WHERE group_id = #{groupId}
+          AND user_id != #{senderId}
+    </update>
+
+    <select id="getConversationList" resultType="com.shortvideo.pojo.entity.Conversation">
+        select c.id as id,
+               c.user1_id as user1Id,
+               c.user2_id as user2Id,
+               c.last_message as lastMessage,
+               c.last_message_time as lastMessageTime,
+               c.last_message_type as lastMessageType,
+               c.unread_count_user1 as unreadCountUser1,
+               c.unread_count_user2 as unreadCountUser2,
+               c.created_time as createdTime,
+               c.updated_time as updatedTime
+        from conversation c
+        where (c.user1_id = #{userId} or c.user2_id = #{userId})
+        <if test="lastId != null and lastId > 0 and lastTime != null">
+            and (c.updated_time &lt; #{lastTime}
+            or (c.updated_time = #{lastTime} and c.id &lt; #{lastId}))
+        </if>
+        order by c.updated_time desc,c.id desc
+        limit #{limit}
+    </select>
+    <select id="getConversationMessages" resultType="com.shortvideo.pojo.vo.conversation.MessageVO">
+        select m.id as messageId,
+               m.sender_id as senderId,
+               m.content as content,
+               m.type as type,
+               m.status as status,
+               m.created_time as createdTime
+        from message m
+        where m.conversation_id = #{conversationId}
+          and (m.sender_id = #{userId} or m.receiver_id = #{userId})
+        <if test="lastId != null and lastId > 0 ">
+            and m.id &lt; #{lastId}
+        </if>
+        order by m.id desc
+        limit #{limit}
+    </select>
+    <select id="getUnreadCount" resultType="java.lang.Integer" parameterType="java.lang.Long">
+        select
+            coalesce(sum(
+                     case when user1_id = #{userId} then unread_count_user1
+                          else unread_count_user2
+                     end
+                     ), 0) as totalUnread
+        from conversation
+        where user1_id = #{userId} or
+          user2_id = #{userId}
+    </select>
+    <select id="getGroupList" resultType="com.shortvideo.pojo.vo.message.GroupVO">
+        select g.id as groupId,
+               g.owner_id as ownerId,
+               g.avatar_url as groupAvatarUrl,
+               g.name as groupName,
+               g.signature as signature,
+               g.member_count as memberCount,
+               g.last_message as lastMessage,
+               g.last_message_type as lastMessageType,
+               g.last_message_time as lastMessageTime,
+               g.status as status,
+               g.created_time as createdTime,
+               g.updated_time as updatedTime
+        from `group` g
+        where g.id in
+        <foreach item="id" collection="groupIds" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        <if test="lastId != null and lastId > 0 and lastTime != null">
+            and (g.updated_time &lt; #{lastTime}
+            or (g.updated_time = #{lastTime} and g.id &lt; #{lastId}))
+        </if>
+        order by g.updated_time desc,g.id desc
+        limit #{limit}
+    </select>
+    <select id="getGroupUserProfileDTOList" resultType="com.shortvideo.pojo.dto.conversation.GroupUserProfileDTO"
+            parameterType="java.lang.Long">
+        select gu.group_id as groupId,
+               gu.user_id as userId,
+               gu.role as role,
+               gu.unread_count as unreadCount
+        from group_user gu
+        where gu.user_id = #{userId}
+    </select>
+    <select id="getGroupMessages" resultType="com.shortvideo.pojo.vo.message.GroupMessageVO">
+        select id as messageId,
+               group_id as groupId,
+               sender_id as senderId,
+               content as content,
+               type as type,
+               is_recalled as isRecalled,
+               created_time as createdTime
+        from group_message
+        where group_id = #{groupId}
+        <if test="lastId != null and lastId > 0 ">
+            and id &lt; #{lastId}
+        </if>
+        order by id desc
+        limit #{limit}
+    </select>
+    <select id="getReadUsers" resultType="com.shortvideo.pojo.vo.conversation.ReadMessageVO">
+        select u.id as userId,
+               u.avatar_url as avatarUrl
+        from group_user gu
+        join user_high u on u.id = gu.user_id
+        where gu.group_id = #{groupId}
+        and gu.last_read_message_id &gt;= #{lastReadMessageId}
+        and gu.user_id != #{userId}
+        order by gu.last_read_message_id desc
+        limit #{limit}
+    </select>
+    <select id="getUnreadCountGroup" resultType="java.lang.Integer" parameterType="java.lang.Long">
+        select
+            coalesce(sum(gu.unread_count), 0) as totalUnread
+        from group_user gu
+        where gu.user_id = #{userId}
+    </select>
+    <select id="getUsersProfile" resultType="com.shortvideo.pojo.vo.conversation.ReadMessageVO">
+        select gu.user_id as userId,
+               gu.role as role,
+               u.avatar_url as avatarUrl,
+               u.nickname as nickname
+        from group_user gu
+        left join user_high u on u.id = gu.user_id
+        where gu.group_id = #{groupId}
+        <if test="lastId != null and lastId > 0 ">
+            and gu.user_id &gt; #{lastId}
+        </if>
+        order by gu.role desc, gu.user_id asc
+        limit #{limit}
+    </select>
+    <select id="searchGroup" resultType="com.shortvideo.pojo.vo.message.GroupVO">
+        select g.id as groupId,
+               g.owner_id as ownerId,
+               g.avatar_url as groupAvatarUrl,
+               g.name as groupName,
+               g.signature as signature,
+               g.member_count as memberCount,
+               g.last_message as lastMessage,
+               g.last_message_type as lastMessageType,
+               g.last_message_time as lastMessageTime,
+               g.status as status,
+               g.created_time as createdTime,
+               g.updated_time as updatedTime,
+               gu.unread_count as unreadCount,
+               gu.role as role
+        from `group` g
+        left join group_user gu on gu.group_id = g.id and gu.user_id = #{userId}
+        where
+            <if test="keyword != null and keyword != ''">
+                g.name like CONCAT('%', #{keyword}, '%')
+            </if>
+        <if test="lastId != null and lastId > 0 ">
+            and g.id &lt; #{lastId}
+        </if>
+        order by g.id desc
+        limit #{limit}
+    </select>
+    <select id="searchConversation" resultType="com.shortvideo.pojo.vo.conversation.ConversationVO">
+        select c.id as conversationId,
+               c.last_message as lastMessage,
+               c.last_message_time as lastMessageTime,
+               c.last_message_type as lastMessageType,
+               case when c.user1_id = #{userId} then c.unread_count_user2
+                    else c.unread_count_user1
+               end as unreadCount,
+            case when c.user1_id = #{userId} then c.user2_id
+                 else c.user1_id
+            end as otherUserId
+        from conversation c
+        where (c.user1_id = #{userId} or c.user2_id = #{userId})
+        <if test="lastId != null and lastId > 0 ">
+            and c.id &lt; #{lastId}
+        </if>
+        order by c.id desc
+        limit #{limit}
+    </select>
+</mapper>
