@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shortvideo.mapper.DashboardMapper">
+
+    <select id="getCreatorStatsSummary" resultType="com.shortvideo.pojo.vo.dashboard.CreatorStatsVO">
+        SELECT
+            COUNT(v.id) AS videoCount,
+            coalesce(SUM(v.play_count),0) AS totalPlayCount,
+            coalesce(SUM(v.like_count),0) AS totalLikeCount,
+            coalesce(SUM(v.comment_count),0) AS totalCommentCount,
+            (select uh.follower_count from user_high uh where uh.id = #{userId}) AS followerCount
+        FROM
+            `video` v
+        WHERE
+            v.user_id = #{userId} and v.status = 1
+    </select>
+    <select id="getCategoryDistribution" resultType="com.shortvideo.pojo.vo.dashboard.CategoryDistributionVO">
+        select
+            v.category_id as categoryId,
+            count(*) as videoCount,
+            c.name as categoryName
+        from video v
+        left join category c on c.id = v.category_id
+        where v.user_id = #{userId} and v.status = 1
+        group by v.category_id,c.name
+        order by videoCount
+    </select>
+    <select id="getTopVideos" resultType="com.shortvideo.pojo.vo.dashboard.TopVideoVO">
+            select
+            v.id as videoId,
+            v.title as title,
+            v.cover_url as coverUrl,
+            v.play_url as playUrl,
+            v.play_count as playCount,
+            v.like_count as likeCount,
+            v.comment_count as commentCount
+        from video v
+        where v.user_id = #{userId} and v.status = 1
+        order by v.like_count desc
+        limit 10
+    </select>
+    <select id="getAdminStatsSummary" resultType="com.shortvideo.pojo.vo.dashboard.AdminStatsVO">
+        SELECT
+            (select count(*) from user_high) AS totalUsers,
+            COUNT(v.id) AS totalVideos,
+            COALESCE(SUM(v.play_count),0) AS totalPlayCount,
+            COALESCE(SUM(v.comment_count),0) AS totalCommentCount,
+            COALESCE(SUM(v.like_count),0) AS totalLikeCount
+        FROM
+            video v
+    </select>
+    <select id="getAdminCategoryDistribution"
+            resultType="com.shortvideo.pojo.vo.dashboard.CategoryDistributionVO">
+        SELECT
+            v.category_id AS categoryId,
+            COUNT(*) AS videoCount,
+            c.name AS categoryName
+        FROM
+            `video` v
+        LEFT JOIN
+            `category` c ON v.category_id = c.id
+        WHERE
+            v.status = 1
+        GROUP BY
+            v.category_id, c.name
+        ORDER BY
+            videoCount
+    </select>
+    <select id="getDailyTrendUsers" resultType="com.shortvideo.pojo.vo.dashboard.DailyTrendVO">
+        select date(created_time) as date,
+            count(*) as newUsers
+        from user_high
+        where created_time >= #{startDate}
+        group by date(created_time)
+    </select>
+    <select id="getDailyTrendVideos" resultType="com.shortvideo.pojo.vo.dashboard.DailyTrendVO">
+        select date(created_time) as date,
+            count(*) as newVideos
+        from `video`
+        where created_time >= #{startDate} and status = 1
+        group by date(created_time)
+    </select>
+    <select id="getDailyTrendLikes" resultType="com.shortvideo.pojo.vo.dashboard.DailyTrendVO">
+        select date(created_time) as date,
+            count(*) as newLikes
+        from video_like
+        where created_time >= #{startDate}
+        group by date(created_time)
+    </select>
+    <select id="getDailyTrendComments" resultType="com.shortvideo.pojo.vo.dashboard.DailyTrendVO">
+        select date(created_time) as date,
+            count(*) as newComments
+        from comment_root
+        where created_time >= #{startDate}
+        group by date(created_time)
+    </select>
+    <select id="getDailyTrendReply" resultType="com.shortvideo.pojo.vo.dashboard.DailyTrendVO">
+        select date(created_time) as date,
+            count(*) as newComments
+        from `comment_reply`
+        where created_time >= #{startDate}
+        group by date(created_time)
+    </select>
+    <select id="getDailyTrendFollowers" resultType="com.shortvideo.pojo.vo.dashboard.DailyTrendVO">
+        select date(created_time) as date,
+            count(*) as newFollower
+        from `follow`
+        where created_time >= #{startDate}
+        group by date(created_time)
+    </select>
+</mapper>
