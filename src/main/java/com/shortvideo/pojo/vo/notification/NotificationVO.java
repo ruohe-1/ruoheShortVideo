@@ -36,9 +36,10 @@ public class NotificationVO {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class TargetInfo {
-        private Integer type;   // 1-视频 2-评论
-        private Long id;
+        private Integer type;   // 1-视频 2-评论 3-用户
+        private Long id;        // 视频ID / 评论ID / 用户ID
         private String title;   // 视频标题
         private String coverUrl; // 视频封面
+        private Long videoId;   // 评论类通知所属的视频ID（前端跳转视频详情/定位评论时用）
     }
 }

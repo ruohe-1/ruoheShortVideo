@@ -100,8 +100,12 @@ public class NotificationServicesImpl implements NotificationServices {
                     NotificationVO.TargetInfo targetInfo = new NotificationVO.TargetInfo();
                     targetInfo.setType(notification.getTargetType());// 1-视频 2-评论 3-用户...
                     targetInfo.setId(notification.getTargetId());
+                    // 评论类通知跳"视频详情并定位评论"时需要用到所属视频ID，这里一并返回给前端
+                    targetInfo.setVideoId(notification.getVideoId());
                     if(notification.getVideoId() != null){ //视频类型
-                        VideoFeedVO videoFeedVO = videoMap.get(notification.getTargetId());
+                        // 注意：评论通知的 targetId 是"评论ID"，要用 videoId 才能查到视频信息，
+                        // 之前用 targetId 查会把评论通知的卡片标题/封面误判成"视频已删除"
+                        VideoFeedVO videoFeedVO = videoMap.get(notification.getVideoId());
                         if(videoFeedVO != null)
                         {
                             targetInfo.setTitle(videoFeedVO.getTitle());
