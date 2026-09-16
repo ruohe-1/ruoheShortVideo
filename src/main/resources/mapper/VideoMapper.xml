@@ -152,4 +152,80 @@
     <select id="getFollowedIds" resultType="java.lang.Long" parameterType="java.lang.Long">
         select followee_id from follow where follower_id = #{userId}
     </select>
+    <select id="selectById" resultType="com.shortvideo.pojo.entity.Video">
+        select id as id,
+               title as title,
+               description as description
+        from video
+        where id = #{videoId}
+    </select>
+    <select id="selectVideoById" resultType="com.shortvideo.pojo.entity.Video">
+        select id as id,
+               user_id as userId,
+               category_id as categoryId,
+               title as title,
+               description as description,
+               play_url as playUrl,
+               cover_url as coverUrl,
+               duration as duration,
+               play_count as playCount,
+               like_count as likeCount,
+               comment_count as commentCount,
+               share_count as shareCount,
+               status as status,
+               created_time as createdTime
+        from video
+        where id = #{videoId}
+    </select>
+    <select id="selectVideosByIds" resultType="com.shortvideo.pojo.entity.Video">
+        select id as id,
+               user_id as userId,
+               category_id as categoryId,
+               title as title,
+               description as description,
+               play_url as playUrl,
+               cover_url as coverUrl,
+               duration as duration,
+               play_count as playCount,
+               like_count as likeCount,
+               comment_count as commentCount,
+               share_count as shareCount,
+               status as status,
+               created_time as createdTime
+        from video
+        where id in
+            <foreach collection="videoIds" separator="," open="(" close=")" item="videoId">
+            #{videoId}
+            </foreach>
+    </select>
+    <insert id="insertVideoAiAudit">
+        insert into video_ai_audit
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="videoId != null">video_id,</if>
+            <if test="verdict != null">verdict,</if>
+            <if test="category != null">category,</if>
+            <if test="reason != null">reason,</if>
+            <if test="rawContent != null">raw_content,</if>
+            <if test="model != null">model,</if>
+            <if test="createdTime != null">created_time,</if>
+        </trim>
+        values
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="videoId != null">#{videoId},</if>
+            <if test="verdict != null">#{verdict},</if>
+            <if test="category != null">#{category},</if>
+            <if test="reason != null">#{reason},</if>
+            <if test="rawContent != null">#{rawContent},</if>
+            <if test="model != null">#{model},</if>
+            <if test="createdTime != null">#{createdTime},</if>
+        </trim>
+    </insert>
+
+    <update id="updateStatus">
+        update video set status = #{status} where id = #{videoId} and status = 2
+    </update>
+    <update id="updateVideoViewCount">
+        update video set play_count = play_count + #{count}
+                     where id = #{videoId}
+    </update>
 </mapper>

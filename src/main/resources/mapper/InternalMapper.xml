@@ -34,4 +34,20 @@
         from report
         where id = #{reportId}
     </select>
+    <select id="getAiAuditVOByVideoIds" resultType="com.shortvideo.pojo.vo.ai.AiAuditVO">
+        select
+        video_id as videoId, verdict, category, reason, model, created_time
+        from video_ai_audit
+        where video_id in
+        <foreach item="videoId" collection="videoIds" separator="," open="(" close=")">
+            #{videoId}
+        </foreach>
+    </select>
+    <select id="getAiAuditVOByVideoId" resultType="com.shortvideo.pojo.vo.ai.AiAuditVO">
+        select
+        video_id as videoId, verdict, category, reason, model, created_time
+        from video_ai_audit
+        where video_id = #{videoId}
+        limit 1
+    </select>
 </mapper>

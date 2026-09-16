@@ -13,9 +13,9 @@ public interface InternalServices {
 
     boolean rejectVideo(Long videoId);
 
-    CursorPageVO<ReportVO> getPendingReports(Long lastId, Integer size);
-
-    boolean approveReport(Long reportId);
-
-    boolean rejectReport(Long reportId);
+//    CursorPageVO<ReportVO> getPendingReports(Long lastId, Integer size);
+//
+//    boolean approveReport(Long reportId);
+//
+//    boolean rejectReport(Long reportId);
 }

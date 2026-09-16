@@ -1,6 +1,7 @@
 package com.shortvideo.pojo.vo.internal;
 
 
+import com.shortvideo.pojo.vo.ai.AiAuditVO;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,4 +23,7 @@ public class InternalVideoVO {
     private Integer duration;
     private Integer status;
     private LocalDateTime createdTime;
+
+    // 添加入AI审核结果
+    private AiAuditVO aiAuditVO;
 }

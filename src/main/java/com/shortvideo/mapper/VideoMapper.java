@@ -2,6 +2,7 @@ package com.shortvideo.mapper;
 
 
 import com.shortvideo.pojo.entity.Video;
+import com.shortvideo.pojo.entity.VideoAiAudit;
 import com.shortvideo.pojo.vo.internal.InternalVideoVO;
 import com.shortvideo.pojo.vo.video.VideoCardVO;
 import com.shortvideo.pojo.vo.video.VideoFeedVO;
@@ -26,7 +27,7 @@ public interface VideoMapper {
 
     List<VideoSearchVO> searchVideo(@Param("keyword") String keyword, @Param("lastId") Long lastId, @Param("size") int i, @Param("category") String category, @Param("userId") Long userId);
 
-
+    //判断视频是否存在
     @Select("select exists(select 1 from video where id = #{videoId})")
     boolean existsVideoById(Long videoId);
     //点赞视频
@@ -48,15 +49,43 @@ public interface VideoMapper {
     //获取视频作者
     @Select("select user_id from video where id = #{videoId}")
     Long getVideoUserId(Long videoId);
+
     //更新视频评论数
     @Update("update video set comment_count = comment_count + #{i} where id = #{videoId}")
     void updateCommentCount(@Param("videoId") Long videoId,@Param("i") int i);
     //判断当前用户是否关注了这些用户
-    List<Boolean> isFollowed(List<Long> userIds,@Param("currUserId") Long currUserId);
+//    List<Boolean> isFollowed(List<Long> userIds,@Param("currUserId") Long currUserId);
 
     List<VideoFeedVO> followVideo(@Param("lastId") Long lastId, @Param("size") int i, @Param("userId") Long userId);
     //根据视频id列表获取视频卡片列表
     List<VideoFeedVO> getVideoCardListByVideoIds(List<Long> videoIds);
     //根据用户id获取关注的用户id列表
     List<Long> getFollowedIds(Long userId);
+
+    //根据视频id获取视频详情(ID,title,描述)
+    Video selectById(Long videoId);
+
+    // 插入ai审核表
+    void insertVideoAiAudit(VideoAiAudit audit);
+    // 根据AI更新字段(AI只能更改status=2的 否则会跟人工冲突)
+    void updateStatus(@Param("videoId") Long videoId,@Param("status") int i);
+
+    //更新视频播放量
+    void updateVideoViewCount(@Param("videoId") Long videoId, @Param("count") Long count);
+
+    //根据视频id获取视频详情
+    Video selectVideoById(Long videoId);
+
+    //更新视频分享量
+    @Update("update video set share_count = share_count + #{i} where id = #{videoId}")
+    void updateShareCount(@Param("videoId") Long videoId, @Param("i") Integer successCount);
+    
+    //根据视频id列表获取视频列表
+    List<Video> selectVideosByIds(List<Long> videoIds);
+    
+    //下架视频
+    @Update("update video set status = #{i} where id = #{targetId} and status = 1")
+    void updateVideoStatus(@Param("targetId") Long targetId,@Param("i") int i);
+
+
 }
