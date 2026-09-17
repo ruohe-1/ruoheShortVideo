@@ -6,13 +6,16 @@ import com.shortvideo.pojo.dto.user.LoginDTO;
 import com.shortvideo.pojo.dto.user.RegisterDTO;
 import com.shortvideo.pojo.dto.user.UpdateProfileDTO;
 import com.shortvideo.pojo.vo.CursorPageVO;
-import com.shortvideo.pojo.vo.user.LoginVO;
-import com.shortvideo.pojo.vo.user.UserListVO;
-import com.shortvideo.pojo.vo.user.UserProfileVO;
+import com.shortvideo.pojo.vo.user.*;
 import com.shortvideo.services.UserServices;
+import com.shortvideo.util.CurrentHolderUtil;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/user")
@@ -92,6 +95,44 @@ public class UserController {
         CursorPageVO<UserListVO> cursorPageVO = userServices.list(size, lastId);
         return Result.success(cursorPageVO);
     }
-
-
+    //二开：用户签到功能
+    @PostMapping("/sign")
+    public Result<SignResultVO> sign() {
+        //1. 获取登录用户
+        Long userId = CurrentHolderUtil.getCurrent();
+        if(userId == null)
+        {
+            return Result.error(400,"用户未登录");
+        }
+        SignResultVO signResultVO = userServices.sign(userId);
+        if(signResultVO == null)
+        {
+            return Result.error(400,"签到失败");
+        }
+        return Result.success(signResultVO);
+    }
+    //二开：统计用户签到
+    @GetMapping("/sign/count")
+    public Result<SignDetailVO> signCount(@RequestParam(required = false) Integer year,
+                                          @RequestParam(required = false) Integer month) {
+        LocalDateTime localDateTime = LocalDateTime.now();
+        if(year == null) year = localDateTime.getYear();
+        if(month == null) month = localDateTime.getMonthValue();
+        SignDetailVO signDetailVO = userServices.signCount(year, month);
+        if(signDetailVO == null)
+        {
+            return Result.error(400,"统计失败");
+        }
+        return Result.success(signDetailVO);
+    }
+    //二开：上传头像图片 返回可访问url
+    @PostMapping("/avatar")
+    public Result<String> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        String url = userServices.uploadAvatar(file);
+        if(url == null)
+        {
+            return Result.error(400,"上传失败");
+        }
+        return Result.success(url);
+    }
 }

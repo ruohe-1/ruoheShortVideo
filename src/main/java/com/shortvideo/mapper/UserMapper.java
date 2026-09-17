@@ -9,6 +9,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
@@ -89,10 +90,41 @@ public interface UserMapper {
     Integer getFollowerCount(Long userId);
 
     //冻结用户(审核模块)
-    void freezeUserById(Long targetId);
+    void freezeUserById(@Param("targetId") Long targetId,@Param("expireTime") LocalDateTime expireTime);
+
     //更新用户点赞数
     @Update("update user_high set total_likes = total_likes + #{i} where id = #{userId}")
     void updateLikeCount(@Param("userId") Long userId,@Param("i") int i);
 
+    //根据用户id列表获取用户信息(通知模块用)
     List<UserHigh> findByUserIdsList(List<Long> senderIds);
+
+
+    //统计用户签到数
+    List<Integer> signCount(@Param("userId") Long userId,@Param("yearAndMonth") String yearAndMonth);
+
+    //获取当前用户关注的用户id
+    List<Long> selectFollowedUserIds(@Param("userId") Long userId,@Param("toInvite") List<Long> toInvite);
+
+    //获取所有AI
+    List<UserHigh> findBots();
+
+    //判断用户是否存在
+    @Select("select exists(select 1 from user_high where id = #{id})")
+    boolean existsUserById(Long id);
+
+    //根据用户id列表获取用户信息(举报模块返回)
+    List<UserHigh> selectUsersByIds(List<Long> userIds);
+
+    //更新用户状态
+    @Update("update user_high set status = #{status},ban_until=null,mute_until=null where id = #{userId}")
+    void updateUserStatus(@Param("userId") Long userId, @Param("status") int i);
+
+    //禁言用户
+    @Update("update user_high set mute_until = #{muteUntil} where id = #{userId}")
+    void muteUserById(@Param("userId") Long targetUserId, @Param("muteUntil") LocalDateTime expireTime);
+
+    //封禁用户
+    @Update("update user_high set status=3, ban_until=#{banUntil} where id=#{userId}")
+    void banUserById(@Param("userId") Long targetUserId, @Param("banUntil") LocalDateTime expireTime);
 }

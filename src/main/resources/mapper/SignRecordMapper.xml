@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shortvideo.mapper.SignRecordMapper">
+    <!-- 插入时使用ignore 能做到忽略重复插入-->
+    <insert id="batchInsert">
+        INSERT IGNORE INTO sign_record (user_id, sign_date, created_time)
+        VALUES
+        <foreach collection="records" item="record" separator=",">
+            (#{record.userId}, #{record.signDate}, #{record.createdTime})
+        </foreach>
+    </insert>
+</mapper>

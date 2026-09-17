@@ -70,7 +70,7 @@
     </update>
     <update id="freezeUserById" parameterType="java.lang.Long">
         update user_high
-        set status = 2
+        set status = 2,ban_until = #{expireTime}
         where id = #{userId}
     </update>
 
@@ -81,7 +81,7 @@
         </where>
     </select>
     <select id="findByUserId" resultType="com.shortvideo.pojo.entity.UserHigh">
-        select id, username, nickname, password, avatar_url, signature, follow_count,follower_count,total_likes,role, status, created_time, updated_time from user_high
+        select id, username, nickname, password, avatar_url, signature, follow_count,follower_count,total_likes,role, status, is_bot,created_time, updated_time,mute_until,ban_until from user_high
         <where>
             <if test="userId != null">id = #{userId}</if>
         </where>
@@ -102,18 +102,59 @@
         limit #{size}
     </select>
     <select id="findByUserIds" resultType="com.shortvideo.pojo.entity.UserHigh">
-        select id, nickname as nickname,avatar_url as avatarUrl
+        select id, nickname as nickname,avatar_url as avatarUrl,is_bot as isBot
         from user_high
-        where id in
-        <foreach collection="userIdIds" item="userId" open="(" separator="," close=")">
-            #{userId}
-        </foreach>
+        <where>
+            <if test="userIdIds != null and userIdIds.size() > 0">
+                id in
+                <foreach collection="userIdIds" item="userId" open="(" separator="," close=")">
+                    #{userId}
+                </foreach>
+            </if>
+            <if test="userIdIds == null or userIdIds.size() == 0">
+                1 = 0
+            </if>
+        </where>
     </select>
     <select id="findByUserIdsList" resultType="com.shortvideo.pojo.entity.UserHigh">
-        select id, nickname as nickname,avatar_url as avatarUrl
+        select id, nickname as nickname,avatar_url as avatarUrl,is_bot as isBot
+        from user_high
+        <where>
+            <if test="senderIds != null and senderIds.size() > 0">
+                id in
+                <foreach collection="senderIds" item="userId" open="(" separator="," close=")">
+                    #{userId}
+                </foreach>
+            </if>
+            <if test="senderIds == null or senderIds.size() == 0">
+                1 = 0
+            </if>
+        </where>
+    </select>
+    <select id="signCount" resultType="java.lang.Integer">
+        select day(sign_date) as day
+        from sign_record
+        where user_id = #{userId}
+        and date_format(sign_date, '%Y%m') = #{yearAndMonth}
+        order by sign_date asc
+    </select>
+    <select id="selectFollowedUserIds" resultType="java.lang.Long" parameterType="java.lang.Long">
+        select  f.followee_id
+        from follow f
+        where  follower_id  = #{userId}
+        and f.followee_id in
+        <foreach collection="toInvite" item="uid" open="(" separator="," close=")">
+            #{uid}
+        </foreach>
+    </select>
+    <select id="findBots" resultType="com.shortvideo.pojo.entity.UserHigh">
+        select id, nickname, avatar_url, is_bot from user_high where is_bot = 1
+    </select>
+    <select id="selectUsersByIds" resultType="com.shortvideo.pojo.entity.UserHigh">
+        select id, nickname as nickname,avatar_url as avatarUrl,is_bot as isBot,signature as signature
         from user_high
         where id in
-        <foreach collection="senderIds" item="userId" open="(" separator="," close=")">
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
             #{userId}
         </foreach>
     </select>
