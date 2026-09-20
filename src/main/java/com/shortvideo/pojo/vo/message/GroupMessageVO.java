@@ -16,8 +16,9 @@ public class GroupMessageVO {
     private Long senderId;
     private String senderNickname;
     private String senderAvatarUrl;
-    private Integer type;//消息类型：1-文本 2-图片 3-语音 4-视频
+    private Integer type;//消息类型：1-文本 2-图片 3-语音 4-视频 5-分享视频
     private String content;
     private Integer isRecalled;//消息状态：1-已发送 2-撤回
+    private Integer isBot;
     private LocalDateTime createdTime;
 }
