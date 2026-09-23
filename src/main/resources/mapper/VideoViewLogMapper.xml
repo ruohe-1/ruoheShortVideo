@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shortvideo.mapper.VideoViewLogMapper">
+
+    <insert id="batchInsert">
+        insert ignore into video_view_log (video_id, user_id,device_id,play_session_id,play_duration,
+               total_duration,ip,created_time)
+               values
+               <foreach collection="logs" item="log" separator=",">
+                   (#{log.videoId}, #{log.userId}, #{log.deviceId}, #{log.playSessionId}, #{log.playDuration},
+                   #{log.totalDuration}, #{log.ip}, #{log.createdTime})
+               </foreach>
+    </insert>
+</mapper>

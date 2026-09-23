@@ -1,17 +1,26 @@
 package com.shortvideo.controller;
 
 
+import com.shortvideo.annotation.PunishCheck;
 import com.shortvideo.common.Result;
 import com.shortvideo.pojo.dto.video.VideoUploadDTO;
+import com.shortvideo.pojo.dto.video.ViewReportDTO;
 import com.shortvideo.pojo.vo.CursorPageVO;
 import com.shortvideo.pojo.vo.video.VideoFeedVO;
 import com.shortvideo.pojo.vo.video.VideoSearchVO;
 import com.shortvideo.pojo.vo.video.VideoUploadVO;
 import com.shortvideo.services.VideoServices;
+import com.shortvideo.util.CurrentHolderUtil;
+import com.shortvideo.util.IpUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.lionsoul.ip2region.xdb.InetAddressException;
+import org.lionsoul.ip2region.xdb.XdbException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/video")
@@ -26,6 +35,7 @@ public class VideoController {
 //        VideoUploadVO videoUploadVO = videoServices.upload(videoUploadDTO);
 //        return Result.success(videoUploadVO);
 //    }
+    @PunishCheck
     @Validated
     @PostMapping("/upload")
     public Result<VideoUploadVO> uploadVideo(@Valid @ModelAttribute VideoUploadDTO videoUploadDTO) {
@@ -77,6 +87,17 @@ public class VideoController {
         CursorPageVO<VideoFeedVO> videoFeedVOCursorPageVO = videoServices.followVideo(lastId,size);
         if(videoFeedVOCursorPageVO.getRecords().isEmpty()) return Result.success(null);
         return Result.success(videoFeedVOCursorPageVO);
+    }
+
+
+
+    //二开：播放量统计
+    @PostMapping("/view/report")
+    public Result<Void> viewReport(@RequestBody ViewReportDTO viewReportDTO, HttpServletRequest request){
+        String ip = IpUtils.getRealIp(request);
+        Long userId = CurrentHolderUtil.getCurrent() == null ?  null : CurrentHolderUtil.getCurrent(); //可以为空
+        videoServices.viewReport(viewReportDTO, userId,ip);
+        return Result.success();
     }
 
 }
