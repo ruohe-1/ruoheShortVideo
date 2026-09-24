@@ -1,8 +1,13 @@
 package com.shortvideo.services.impl;
 
 
+import com.alibaba.fastjson2.JSON;
+import com.shortvideo.annotation.PunishCheck;
+import com.shortvideo.enums.TargetTypeEnum;
+import com.shortvideo.exceptionHandler.BusinessException;
 import com.shortvideo.mapper.ConversationMapper;
 import com.shortvideo.mapper.UserMapper;
+import com.shortvideo.mapper.VideoMapper;
 import com.shortvideo.pojo.dto.conversation.*;
 import com.shortvideo.pojo.entity.*;
 import com.shortvideo.pojo.vo.CursorPageVO;
@@ -10,19 +15,30 @@ import com.shortvideo.pojo.vo.conversation.*;
 import com.shortvideo.pojo.vo.message.GroupMessageVO;
 import com.shortvideo.pojo.vo.message.GroupVO;
 import com.shortvideo.services.ConversationServices;
+import com.shortvideo.util.AliyunOSSperator;
 import com.shortvideo.util.CurrentHolderUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cglib.core.Local;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 
 import java.io.File;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import static com.shortvideo.config.RabbitMQConfig.*;
+import static com.shortvideo.util.RedisConstants.*;
 
 @Service
 @Slf4j
@@ -31,9 +47,21 @@ public class ConversationServicesImpl implements ConversationServices {
     private ConversationMapper conversationMapper;
     @Autowired
     private UserMapper userMapper;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private VideoMapper videoMapper;
+    @Autowired
+    private SimpMessagingTemplate simpMessagingTemplate; // 消息模板推送
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+    @Autowired
+    private AliyunOSSperator aliyunOSSperator;
+
     @Value("${file.upload-dir}")
     private String uploadDir;
-
+    private static final Integer MAX_GROUP_SIZE = 50;
+    private static final Integer MAX_GROUP_SIZE_PLUS = 500;
 
     @Override
     public CursorPageVO<ConversationVO> getConversationList(LocalDateTime lastTime, Long lastId, Integer size) {
@@ -168,26 +196,33 @@ public class ConversationServicesImpl implements ConversationServices {
         if(conversationUploadDTO.getFile().getSize() > 1024*1024*500)
             throw new RuntimeException("文件大小超出限制");
         try{
-            //1. 获取文件后缀
-            String ori = conversationUploadDTO.getFile().getOriginalFilename();
-            if(ori == null || ori.isEmpty())
-                throw new RuntimeException("文件名为空");
-            int dot = ori.lastIndexOf(".");
-            String suffix = dot > 0 ? ori.substring(dot) : "";
-            String uuidName = UUID.randomUUID().toString();
-            String newName = CurrentHolderUtil.getCurrent() + "_" + uuidName + suffix;
-            //2. 创建存储目录
-            //这里的dataPath格式为：2023-03-07T12:34:56.789 :会报错
-//            String dataPath = LocalDateTime.now().toString();
-            String dataPath = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-            File targetDir = new File(uploadDir+File.separator+dataPath);
-            if(!targetDir.exists()) targetDir.mkdirs();
-            //3. 保存文件到磁盘
-            File targetFile = new File(targetDir, newName);
-            conversationUploadDTO.getFile().transferTo(targetFile);//将上传的文件写入磁盘
-            //4. 构造文件访问URL
-//            String fileUrl = "/videos/" + dataPath + File.separator + newFileName;
-            String fileUrl = "/videos/" + dataPath+ "/" + newName;
+//            //1. 获取文件后缀
+//            String ori = conversationUploadDTO.getFile().getOriginalFilename();
+//            if(ori == null || ori.isEmpty())
+//                throw new RuntimeException("文件名为空");
+//            int dot = ori.lastIndexOf(".");
+//            String suffix = dot > 0 ? ori.substring(dot) : "";
+//            String uuidName = UUID.randomUUID().toString();
+//            String newName = CurrentHolderUtil.getCurrent() + "_" + uuidName + suffix;
+//            //2. 创建存储目录
+//            //这里的dataPath格式为：2023-03-07T12:34:56.789 :会报错
+////            String dataPath = LocalDateTime.now().toString();
+//            String dataPath = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+//            File targetDir = new File(uploadDir+File.separator+dataPath);
+//            if(!targetDir.exists()) targetDir.mkdirs();
+//            //3. 保存文件到磁盘
+//            File targetFile = new File(targetDir, newName);
+//            conversationUploadDTO.getFile().transferTo(targetFile);//将上传的文件写入磁盘
+//            //4. 构造文件访问URL
+////            String fileUrl = "/videos/" + dataPath + File.separator + newFileName;
+//            String fileUrl = "/videos/" + dataPath+ "/" + newName;
+            //try-with-resources：自动关闭输入流
+            MultipartFile f = conversationUploadDTO.getFile();
+            String fileUrl;
+            try (InputStream in = f.getInputStream()){
+                fileUrl = aliyunOSSperator.upload(in, f.getSize(),
+                        f.getContentType(), f.getOriginalFilename());
+            }
             if(conversationUploadDTO.getType() == 1)
             {
                 return new UploadVO(fileUrl, conversationUploadDTO.getType(), 0L);
@@ -203,6 +238,7 @@ public class ConversationServicesImpl implements ConversationServices {
 
     @Override
     @Transactional
+    @PunishCheck
     public MessageVO sendMessage(SendMessageDTO sendMessageDTO, Long senderId) {
         if(senderId == null) throw new RuntimeException("发送者ID为空");
         if(sendMessageDTO.getReceiverId() == null) throw new RuntimeException("接收者ID为空");
@@ -354,6 +390,7 @@ public class ConversationServicesImpl implements ConversationServices {
             }else{
                 groupMessageVO.setSenderNickname(userHigh.getNickname() != null ? userHigh.getNickname() : "已注销");
                 groupMessageVO.setSenderAvatarUrl(userHigh.getAvatarUrl() != null ? userHigh.getAvatarUrl() : "");
+                groupMessageVO.setIsBot(userHigh.getIsBot() != null ? userHigh.getIsBot() : 0);
             }
         });
         Long newLastId = groupMessageVOList.isEmpty() ? null : groupMessageVOList.get(groupMessageVOList.size() - 1).getMessageId();
@@ -373,6 +410,7 @@ public class ConversationServicesImpl implements ConversationServices {
         return conversationMapper.readGroupMessages(groupId, userId, readMessageDTO.getLastReadMessageId()) > 0;
     }
     //获取已读用户列表
+    //todo 将已读用户列表存于redis hash
     @Override
     public CursorPageVO<ReadMessageVO> getReadUsers(Long groupId, Integer size, Long lastReadMessageId) {
         //1. 获取当前登录用户
@@ -464,6 +502,7 @@ public class ConversationServicesImpl implements ConversationServices {
     //发送群消息
     @Transactional
     @Override
+    @PunishCheck
     public GroupMessageVO saveGroupMessage(GroupMessageDTO groupMessageDTO, Long senderId) {
         //1. 判断当前登录用户是否为空
         if(senderId == null) throw new IllegalArgumentException("当前登录用户不能为空");
@@ -511,6 +550,7 @@ public class ConversationServicesImpl implements ConversationServices {
         groupMessageVO.setSenderId(groupMessage.getSenderId());
         groupMessageVO.setSenderNickname(userHigh.getNickname() != null ? userHigh.getNickname() : "匿名用户");
         groupMessageVO.setSenderAvatarUrl(userHigh.getAvatarUrl() != null ? userHigh.getAvatarUrl() : "");
+        groupMessageVO.setIsBot(userHigh.getIsBot() != null ? userHigh.getIsBot() : 0);
         groupMessageVO.setType(groupMessage.getType());
         groupMessageVO.setIsRecalled(groupMessage.getIsRecalled() != null ? groupMessage.getIsRecalled() : 1);
         groupMessageVO.setContent(groupMessageDTO.getContent());
@@ -547,7 +587,7 @@ public class ConversationServicesImpl implements ConversationServices {
         //2. 先查询群聊表
         List<GroupVO> groupVOList = conversationMapper.searchGroup(keyword, newLastId,size+1,userId);
         //3. 先根据用户ID查询会话表得到私聊ID
-        List<ConversationVO> conversationVOList = conversationMapper.searchConversation(newLastId, size+1, userId);
+        List<ConversationVO> conversationVOList = conversationMapper.searchConversation(keyword,newLastId, size+1, userId);
         if(groupVOList == null && conversationVOList == null) return null;
         boolean hasMoreGroups = false;
         boolean hasMoreUsers = false;
@@ -562,6 +602,7 @@ public class ConversationServicesImpl implements ConversationServices {
             conversationVOList.remove(conversationVOList.size() - 1);
         }
         List<Long> otherUserIds = conversationVOList.stream().map(ConversationVO::getOtherUserId).collect(Collectors.toList());
+
         List<UserHigh> userHighs = userMapper.findByUserIds(new HashSet<>(otherUserIds));
         if(userHighs == null) hasMoreUsers = false;
         Map<Long, UserHigh> userHighMap;
@@ -576,4 +617,289 @@ public class ConversationServicesImpl implements ConversationServices {
         }
         return new SearchResultVO(groupVOList, conversationVOList, hasMoreUsers, hasMoreGroups);
     }
+
+
+    //添加群成员
+    @Transactional  // 事务：保证"插入成员 + 更新计数"要么全部成功要么整体回滚，避免半截状态
+    @Override
+    public InviteResultVO addMembers(Long groupId, InviteMembersDTO inviteMembersDTO) {
+        //1. 校验发起者用户权限
+        Long userId = CurrentHolderUtil.getCurrent();
+        if(userId == null) throw new IllegalArgumentException("当前登录用户不能为空");
+        if(!conversationMapper.existsGroupUser(groupId, userId))
+            throw new BusinessException("无权限");
+        ReadMessageVO readMessageVO = conversationMapper.getUsersRoleByUserId(groupId, userId);
+        if(readMessageVO == null)
+            throw new BusinessException("无权限");
+        if(readMessageVO.getRole() != 1 && readMessageVO.getRole() != 2)
+            throw new BusinessException("无权限");
+        if (inviteMembersDTO == null || inviteMembersDTO.getUserIds() == null)
+            throw new BusinessException("请选择要拉入的成员");
+        //2. 校验群聊是否存在
+        if(!conversationMapper.existsGroup(groupId)) throw new BusinessException("群聊不存在");
+        List<Long> targetIds = inviteMembersDTO.getUserIds().stream()
+                .filter(targetId -> targetId != null && !targetId.equals(userId))// 过滤掉空值和发起者用户ID
+                .distinct()
+                .toList();
+        if(targetIds.isEmpty()) throw new BusinessException("请选择要拉入的成员");
+        //3. 校验群聊成员是否已满
+        int currentCount = conversationMapper.countByGroupId(groupId);
+        int remain = MAX_GROUP_SIZE - currentCount;
+        if(remain <= 0) throw new BusinessException("群聊成员已满");
+        //4. 筛选已经存在的成员 existIds已经存在的ID列表
+        List<Long> existIds = conversationMapper.selectExistingUserIds(groupId, targetIds);
+        Set<Long> existIdSet = new HashSet<>(existIds);
+        //5. 过滤真正要拉的
+        List<Long> toInvite = targetIds.stream()
+                .filter(targetId -> !existIdSet.contains(targetId))
+                .toList();
+        if(toInvite.isEmpty()) throw new BusinessException("没有新的成员需要邀请");
+        //5.1 筛选是否是关注的
+        List<Long> followedIds = userMapper.selectFollowedUserIds(userId, toInvite);
+        Set<Long> followedSet = new HashSet<>(followedIds);
+        List<Long> toInviteIds = toInvite.stream()
+                .filter(followedSet::contains)
+                .limit(remain) // 限制邀请人数不超过剩余容量
+                .toList();
+        List<Long> noToInviteIds = toInvite.stream() // 筛选不关注的 待会要跟不存在的一起封装返回信息
+                .filter(targetId -> !followedSet.contains(targetId))
+                .toList();
+        if(toInviteIds.isEmpty())
+            throw new BusinessException("没有新的成员需要邀请");
+        //6. 检查用户是否存在
+        List<UserHigh> users = userMapper.findByUserIds(new HashSet<>(toInviteIds));
+        Set<Long> validUserIds = users.stream().map(UserHigh::getId).collect(Collectors.toSet());
+        List<Long> noExistIds = toInviteIds.stream() // 筛选不存在的ID 理论上三个应该不可能重复？
+                .filter(targetId -> !validUserIds.contains(targetId))
+                .toList();
+        //7. 批量组装插入数据
+        LocalDateTime now = LocalDateTime.now();
+        List<GroupUser> members = toInviteIds.stream()
+                .filter(validUserIds::contains)
+                .map(targetId -> {
+                    GroupUser gu = new GroupUser();
+                    gu.setGroupId(groupId);
+                    gu.setUserId(targetId);
+                    gu.setRole(0);
+                    gu.setUnreadCount(0);
+                    gu.setLastReadMessageId(null);
+                    gu.setType(1);
+                    gu.setCreatedTime(now);
+                    return gu;
+                }).toList();
+        //8. 批量插入
+        if(members != null && !members.isEmpty())
+            conversationMapper.batchInsertGroupUsers(members);
+        //更新群聊成员数量
+//        void updateGroupMemberCount(@Param("groupId") Long groupId, @Param("size") int size);
+        //   并发时两个请求会在 group 行上排队执行，后者若 member_count+size>50 则更新影响0行，
+        //9. 更新群成员数（单条 UPDATE 原子递增 + 容量兜底）。
+        //   注意：member_count 不含群主(真实人数=member_count+1)，上限50人=member_count上限49(<50)。
+        //   并发时两个请求会在 group 行上排队执行，后者把 member_count+size 顶到 >=50 则影响0行，
+        //   这里抛异常触发 @Transactional 整体回滚（把刚插入的成员撤销），从根上杜绝超员竞态
+        int affected = conversationMapper.updateGroupMemberCount(groupId, members.size());
+        if(affected == 0) throw new BusinessException("群聊成员已满，请减少人数");
+        //10. 返回结果
+        InviteResultVO vo = new InviteResultVO();
+        vo.setSuccessCount(members.size());
+        vo.setFailedCount(targetIds.size() - members.size());
+        List<InviteResultVO.failUser> failList = new ArrayList<>();
+        //existIds 已经存在的ID列表  noToInviteIds 没关注的ID列表  noExistIds 不存在的ID列表
+        failList.addAll(existIds.stream().map(existId -> new InviteResultVO.failUser(existId, "已在群内")).toList());
+        failList.addAll(noToInviteIds.stream().map(noToInviteId -> new InviteResultVO.failUser(noToInviteId, "不关注")).toList());
+        failList.addAll(noExistIds.stream().map(noExistId -> new InviteResultVO.failUser(noExistId, "不存在")).toList());
+        vo.setFailList(failList);
+        return vo;
+    }
+
+    //分享视频
+    @Transactional
+    @Override
+    @PunishCheck
+    public ShareVideoVO shareVideo(ShareVideoDTO shareVideoDTO) {
+        //1. 获取登录用户
+        Long userId = CurrentHolderUtil.getCurrent();
+        if(userId == null) throw new BusinessException("用户未登录");
+        if(shareVideoDTO == null) throw new BusinessException("参数不能为空");
+        if(shareVideoDTO.getVideoId() == null) throw new BusinessException("视频ID不能为空");
+        if(shareVideoDTO.getTarget() == null || (!shareVideoDTO.getTarget().equals(1) && !shareVideoDTO.getTarget().equals(2))) throw new BusinessException("目标类型不能为空");
+        //2. 判断视频是否存在
+        Video video = videoMapper.selectVideoById(shareVideoDTO.getVideoId());
+        if(video == null) throw new BusinessException("视频不存在");
+        //3. 判断目标是否为空
+        if(shareVideoDTO.getTargetIds() == null || shareVideoDTO.getTargetIds().isEmpty()) throw new BusinessException("目标用户/群聊不能为空");
+        //3. 判断目标用户/群聊是否存在
+//        if(shareVideoDTO.getTarget() == 1 && !validExists(1,shareVideoDTO.getTargetIds().get(0)))
+//            throw new BusinessException("目标用户不存在");
+//        else if(shareVideoDTO.getTarget() == 2 && !validExists(2,shareVideoDTO.getTargetIds().get(0)))
+//            throw new BusinessException("目标群聊不存在");
+        //4. 构建分享卡片的content数据
+        UserHigh userHigh = userMapper.findByUserId(userId);
+        ShareVideoCardDTO shareVideoCardDTO = new ShareVideoCardDTO();
+        shareVideoCardDTO.setVideoId(video.getId());
+        shareVideoCardDTO.setAvatarUrl(userHigh.getAvatarUrl() != null ? userHigh.getAvatarUrl() : "");
+        shareVideoCardDTO.setUserId(userHigh.getId());
+        shareVideoCardDTO.setUsername(userHigh.getUsername() != null ? userHigh.getUsername() : "");
+        shareVideoCardDTO.setPlayUrl(video.getPlayUrl() != null ? video.getPlayUrl() : "");
+        shareVideoCardDTO.setCoverUrl(video.getCoverUrl() != null ? video.getCoverUrl() : "");
+        String content = JSON.toJSONString(shareVideoCardDTO);
+        //5. 判断目标类型分发
+        Integer successCount = 0;
+        List<Long> failList = new ArrayList<>();
+        for(Long targetId : shareVideoDTO.getTargetIds()){
+            try {
+                // 逐个校验目标任务是否存在（failList 记失败，不影响其他目标）
+                if(shareVideoDTO.getTarget() == 1 && !validExists(1, targetId))
+                    throw new BusinessException("目标用户不存在");
+                else if(shareVideoDTO.getTarget() == 2 && !validExists(2, targetId))
+                    throw new BusinessException("目标群聊不存在");
+                if(shareVideoDTO.getTarget() == 1){
+                    //目标是用户
+                    sendShareMessage(userId, targetId,content);
+                }else {
+                    //目标是群聊
+                    sendGroupShareMessage(userId, targetId,content);
+                }
+                successCount++;
+            }catch (BusinessException e){
+                log.error("分享视频失败: userId={}, targetId={}, content={}", userId, targetId, content, e);
+                failList.add(targetId);
+            }
+        }
+        //更新分享数
+        if(successCount > 0){
+            videoMapper.updateShareCount(shareVideoDTO.getVideoId(), successCount);
+        }
+        //6. 返回VO
+        ShareVideoVO shareVideoVO = new ShareVideoVO();
+        shareVideoVO.setSuccessCount(successCount);
+        shareVideoVO.setFailList(failList);
+        return shareVideoVO;
+    }
+    private boolean validExists(Integer type,Long Id) {
+        if(Id == null) return false;
+        String key,cached;
+        boolean exists;
+        switch (type){
+            case 1: //用户
+                key = USER_EXISTS_PREFIX + Id;
+                //1. 缓存命中 直接返回
+                cached = stringRedisTemplate.opsForValue().get(key);
+                if(cached != null) return Boolean.parseBoolean(cached);
+                //2. 没命中 查一次数据库 回填到redis
+                exists = userMapper.existsUserById(Id);
+                stringRedisTemplate.opsForValue().set(key, String.valueOf(exists),30, TimeUnit.SECONDS);
+                return exists;
+            case 2: //群聊
+                key = GROUP_EXISTS_PREFIX + Id;
+                //1. 缓存命中 直接返回
+                cached = stringRedisTemplate.opsForValue().get(key);
+                if(cached != null) return Boolean.parseBoolean(cached);
+                //2. 没命中 查一次数据库 回填到redis
+                exists = conversationMapper.existsGroupById(Id);
+                stringRedisTemplate.opsForValue().set(key, String.valueOf(exists),30, TimeUnit.SECONDS);
+                return exists;
+            case 3: //视频
+                key = VIDEO_EXISTS_PREFIX + Id;
+                //1. 缓存命中 直接返回
+                cached = stringRedisTemplate.opsForValue().get(key);
+                if(cached != null) return Boolean.parseBoolean(cached);
+                //2. 没命中 查一次数据库 回填到redis
+                exists = videoMapper.existsVideoById(Id);
+                stringRedisTemplate.opsForValue().set(key, String.valueOf(exists),30, TimeUnit.SECONDS);
+                return exists;
+            //Caffeine 的区别就一个：每次请求多 1 次 Redis 往返（打入已有的一串校验里，可忽略）。
+            //两种方案都行
+            default:
+                return false;
+        }
+    }
+
+    //    发送私信分享消息
+    private void sendShareMessage(Long userId, Long targetId, String content) {
+        //1. 获取会话
+        Long user1Id = Math.min(userId, targetId);
+        Long user2Id = Math.max(userId, targetId);
+        Conversation conversation = conversationMapper.findByUserIds(user1Id, user2Id);
+        if(conversation == null) throw new BusinessException("对方不是你的关注对象");
+        //2. 插入消息
+        Message message = new Message();
+        LocalDateTime now = LocalDateTime.now();
+        message.setConversationId(conversation.getId());
+        message.setSenderId(userId);
+        message.setReceiverId(targetId);
+        message.setType(5);
+        message.setContent(content);
+        message.setStatus(1);
+        message.setCreatedTime(now);
+        conversationMapper.insertMessage(message);
+        //3. 更新会话
+        conversationMapper.updateLastMessage(conversation.getId(), "分享[视频]",now,5);
+        conversationMapper.increaseUnread(conversation.getId(), targetId);
+        //4. 推送到websocket
+        UserHigh userHigh = userMapper.findByUserId(userId);
+        MessageVO vo = new MessageVO();
+        vo.setMessageId(message.getId());
+        vo.setSenderId(userId);
+        vo.setSenderNickname(userHigh.getUsername() != null ? userHigh.getUsername() : "");
+        vo.setSenderAvatarUrl(userHigh.getAvatarUrl() != null ? userHigh.getAvatarUrl() : "");
+        vo.setContent(content);
+        vo.setCreatedTime(now);
+        vo.setType(5);
+        vo.setStatus(1);
+        // 5. 推送消息给接收方（私信）
+        //    接收方订阅地址：/user/{receiverId}/queue/messages
+        simpMessagingTemplate.convertAndSendToUser(
+                String.valueOf(targetId),// 接收方用户 ID
+                "/queue/messages", // 固定后缀（与前端订阅一致
+                vo // 推送的数据（MessageVO）
+        );
+        //6. 推送消息给发送方（私信）
+        simpMessagingTemplate.convertAndSendToUser(
+                String.valueOf(userId),// 发送方用户 ID
+                "/queue/messages", // 固定后缀（与前端订阅一致）
+                vo // 推送的数据（MessageVO）
+        );
+    }
+    //    发送群聊分享消息
+    private void sendGroupShareMessage(Long userId, Long targetId, String content) {
+        //1. 检验成员身份
+        if(!conversationMapper.existsGroupUser(targetId, userId))
+            throw new BusinessException("您不是群聊成员");
+        //2. 插入群消息
+        GroupMessage message = new GroupMessage();
+        LocalDateTime now = LocalDateTime.now();
+        message.setGroupId(targetId);
+        message.setSenderId(userId);
+        message.setType(5); // 1-文本 2-图片 3-语音 4-视频 5-视频分享卡片
+        message.setContent(content);
+        message.setIsRecalled(1);//消息状态：1-已发送 2-撤回
+        message.setCreatedTime(now);
+        message.setUpdatedTime(now);
+        conversationMapper.insertGroupMessage(message);
+        //3. 更新群表最后消息
+        conversationMapper.updateGroupLastMessage(targetId, "分享[视频]", 5, now);
+        //4. 给群成员未读数+1
+        conversationMapper.updateGroupUserUnreadCount(targetId, userId);
+        //5. 投递MQ
+        GroupMessageVO vo = new GroupMessageVO();
+        UserHigh userHigh = userMapper.findByUserId(userId);
+        vo.setMessageId(message.getId());
+        vo.setGroupId(targetId);
+        vo.setSenderId(userId);
+        vo.setSenderNickname(userHigh.getUsername() != null ? userHigh.getUsername() : "");
+        vo.setSenderAvatarUrl(userHigh.getAvatarUrl() != null ? userHigh.getAvatarUrl() : "");
+        vo.setType(5);
+        vo.setContent(content);
+        vo.setIsRecalled(1);
+        vo.setIsBot(0);
+        vo.setCreatedTime(now);
+        rabbitTemplate.convertAndSend(
+                GROUP_MESSAGE_EXCHANGE,
+                GROUP_MESSAGE_ROUTING_KEY,
+                vo
+        );
+    }
 }
+
+

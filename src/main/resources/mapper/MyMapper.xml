@@ -56,4 +56,17 @@
         order by u.id desc
         limit #{size}
     </select>
+    <select id="getMyHistoryVideoList" resultType="com.shortvideo.pojo.vo.my.MyHistoryVideoVO">
+        select v.id as videoId, v.user_id AS userId, v.play_url AS playUrl, v.cover_url AS coverUrl, v.duration AS duration, v.title AS title, uvh.last_view_time AS lastViewTime
+        from video v
+        inner join user_view_history uvh on uvh.video_id = v.id and uvh.user_id = #{userId}
+        <where>
+            <if test="lastViewTime != null">
+                uvh.last_view_time &lt; #{lastViewTime}
+                or (uvh.last_view_time = #{lastViewTime} and v.id &lt; #{lastId})
+            </if>
+        </where>
+        order by  uvh.last_view_time desc,v.id desc
+        limit #{size}
+    </select>
 </mapper>

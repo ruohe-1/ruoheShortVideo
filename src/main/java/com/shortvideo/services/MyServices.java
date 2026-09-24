@@ -1,11 +1,9 @@
 package com.shortvideo.services;
 
 import com.shortvideo.pojo.vo.CursorPageVO;
-import com.shortvideo.pojo.vo.my.MyFollowersVO;
-import com.shortvideo.pojo.vo.my.MyFollowingVO;
-import com.shortvideo.pojo.vo.my.MyLikeVideoVO;
-import com.shortvideo.pojo.vo.my.MyVideoVO;
+import com.shortvideo.pojo.vo.my.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface MyServices {
@@ -16,4 +14,6 @@ public interface MyServices {
     CursorPageVO<MyFollowingVO> getMyFollowList(int size, Long lastId);
 
     CursorPageVO<MyFollowersVO> getMyFollowerList(int size, Long lastId);
+
+    CursorPageVO<MyHistoryVideoVO> getMyHistoryVideoList(int size, Long lastId, LocalDateTime lastViewTime);
 }

@@ -4,16 +4,14 @@ package com.shortvideo.services.impl;
 import com.shortvideo.mapper.MyMapper;
 import com.shortvideo.mapper.VideoMapper;
 import com.shortvideo.pojo.vo.CursorPageVO;
-import com.shortvideo.pojo.vo.my.MyFollowersVO;
-import com.shortvideo.pojo.vo.my.MyFollowingVO;
-import com.shortvideo.pojo.vo.my.MyLikeVideoVO;
-import com.shortvideo.pojo.vo.my.MyVideoVO;
+import com.shortvideo.pojo.vo.my.*;
 import com.shortvideo.services.MyServices;
 import com.shortvideo.util.CurrentHolderUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -21,8 +19,6 @@ import java.util.List;
 public class MyServicesImpl implements MyServices {
     @Autowired
     private MyMapper myMapper;
-    @Autowired
-    private VideoMapper videoMapper;
     //获取我的视频列表
     @Override
     public CursorPageVO<MyVideoVO> getMyVideoList(int size, Long lastId) {
@@ -94,5 +90,23 @@ public class MyServicesImpl implements MyServices {
         }
         Long newLastId = myFollowersList.get(myFollowersList.size() - 1).getUserId();
         return new CursorPageVO<>(myFollowersList, newLastId, hasMore, size);
+    }
+    //获取我的历史视频列表
+    @Override
+    public CursorPageVO<MyHistoryVideoVO> getMyHistoryVideoList(int size, Long lastId, LocalDateTime lastViewTime) {
+        //1. 判断是否登录
+        Long userId = CurrentHolderUtil.getCurrent();
+        if(userId == null) throw new RuntimeException("用户未登录");
+        //2. 查询数据
+        List<MyHistoryVideoVO> myHistoryVideoList = myMapper.getMyHistoryVideoList(userId, size+1, lastId, lastViewTime);
+        if(myHistoryVideoList.isEmpty()) return new CursorPageVO<>(null, null, false, size);
+        boolean hasMore = false;
+        if(myHistoryVideoList.size() > size)
+        {
+            myHistoryVideoList.remove(size);
+            hasMore = true;
+        }
+        Long newLastId = myHistoryVideoList.get(myHistoryVideoList.size() - 1).getVideoId();
+        return new CursorPageVO<>(myHistoryVideoList, newLastId, hasMore, size);
     }
 }

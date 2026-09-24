@@ -2,9 +2,7 @@ package com.shortvideo.controller;
 
 
 import com.shortvideo.common.Result;
-import com.shortvideo.pojo.dto.conversation.ConversationUploadDTO;
-import com.shortvideo.pojo.dto.conversation.CreateGroupDTO;
-import com.shortvideo.pojo.dto.conversation.ReadMessageDTO;
+import com.shortvideo.pojo.dto.conversation.*;
 import com.shortvideo.pojo.vo.CursorPageVO;
 import com.shortvideo.pojo.vo.conversation.*;
 import com.shortvideo.pojo.vo.message.GroupMessageVO;
@@ -83,6 +81,12 @@ public class ConversationController {
             return Result.error(500,"创建群聊失败");
         return Result.success(groupVO);
     }
+    //拉取关注的人进入群聊
+    @PostMapping("/groups/{groupId}/members")
+    public Result<InviteResultVO> addMembers(@PathVariable Long groupId, @RequestBody InviteMembersDTO inviteMembersDTO) {
+        InviteResultVO inviteResultVO = conversationService.addMembers(groupId, inviteMembersDTO);
+        return Result.success(inviteResultVO);
+    }
 
     //获取群聊列表
     @GetMapping("/message/group")
@@ -146,5 +150,13 @@ public class ConversationController {
         if(searchResultVO == null || (searchResultVO.getConversationVOList() == null && searchResultVO.getGroupVOList() == null))
             return Result.success(new SearchResultVO());
         else return Result.success(searchResultVO);
+    }
+
+    //分享视频
+    @PostMapping("/share/video")
+    public Result<ShareVideoVO> shareVideo(@RequestBody ShareVideoDTO shareVideoDTO) {
+        ShareVideoVO result = conversationService.shareVideo(shareVideoDTO);
+        if(result != null) return Result.success(result);
+        return Result.error(500,"分享失败");
     }
 }

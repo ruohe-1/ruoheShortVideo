@@ -12,7 +12,7 @@ public class MessageVO {
     private String senderNickname; //发送者昵称
     private String senderAvatarUrl; //发送者头像
     private String content; //消息内容
-    private Integer type; //消息类型
+    private Integer type; //消息类型 1-文本 2-图片 3-语音 4-视频 5-视频分享卡片
     private Integer status; //消息状态
     private LocalDateTime createdTime; //消息创建时间
 }

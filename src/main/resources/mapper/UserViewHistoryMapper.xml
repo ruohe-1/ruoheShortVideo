@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shortvideo.mapper.UserViewHistoryMapper">
+
+    <insert id="batchInsert" >
+        insert into user_view_history
+            (user_id,video_id,last_view_time,view_count,max_progress)
+        values
+            <foreach collection="userViewHistories" item="userViewHistory" separator=",">
+                (#{userViewHistory.userId}, #{userViewHistory.videoId}, #{userViewHistory.lastViewTime}, #{userViewHistory.viewCount}, #{userViewHistory.maxProgress})
+            </foreach>
+        on duplicate key update
+        last_view_time = now(),
+        view_count = view_count + 1,
+        max_progress = greatest(max_progress, values(max_progress))
+    </insert>
+</mapper>

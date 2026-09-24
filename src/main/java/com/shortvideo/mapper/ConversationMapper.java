@@ -38,11 +38,23 @@ public interface ConversationMapper {
     //插入会话
     void insertConversation(Conversation conv);
 
+    //判断私信消息是否存在
+    @Select("SELECT EXISTS(SELECT 1 FROM `message` WHERE id = #{messageId})")
+    boolean existsMessageById(@Param("messageId") Long messageId);
+    
     //插入聊天信息
     void insertMessage(Message message);
 
+    //更新聊天信息为撤回状态
+    @Update("UPDATE `message` SET status = 3 WHERE id = #{targetId}")
+    void updateMessageRecall(@Param("targetId") Long targetId);
+
     //更新会话的最后一条消息
     void updateLastMessage(@Param("conversationId") Long aLong, @Param("lastMessage") String lastMessage, @Param("now") LocalDateTime now, @Param("type") Integer type);
+
+    // 根据消息ID获取接收者ID
+    @Select("SELECT sender_id as senderId FROM `message` WHERE id = #{targetId}")
+    Long getMessageSenderId(@Param("targetId") Long targetId);
 
     //增加未读消息数
     void increaseUnread(@Param("conversationId") Long aLong, @Param("receiverId") Long receiverId);
@@ -109,7 +121,49 @@ public interface ConversationMapper {
     List<GroupVO> searchGroup(@Param("keyword") String keyword,@Param("lastId") Long lastId ,@Param("limit") int i, @Param("userId") Long userId);
 
     //搜索会话
-    List<ConversationVO> searchConversation(@Param("lastId") Long newLastId,@Param("limit") int i,@Param("userId") Long userId);
+    List<ConversationVO> searchConversation(@Param("keyword") String keyWard,@Param("lastId") Long newLastId,@Param("limit") int i,@Param("userId") Long userId);
+
+    //根据群聊id获取群聊用户数量
+    int countByGroupId(@Param("groupId") Long groupId);
+
+    //根据群聊id和用户列表获取交集(批量查已在群内的用户 ID)
+    List<Long> selectExistingUserIds(@Param("groupId") Long groupId, @Param("targetIds") List<Long> targetIds);
+
+    //批量插入群聊用户
+    void batchInsertGroupUsers(List<GroupUser> members);
+
+    //更新群聊成员数量（原子递增+容量兜底，返回受影响行数：0 表示已满）
+    int updateGroupMemberCount(@Param("groupId") Long groupId, @Param("size") int size);
+
+    //根据群聊id和用户id获取用户角色
+    ReadMessageVO getUsersRoleByUserId(@Param("groupId") Long groupId, @Param("userId") Long userId);
+
+    //获取群聊最近消息(AI上下文) 后续可能会在python侧
+    List<GroupMessageVO> selectRecent(@Param("groupId") Long groupId,@Param("limit") int i);
+
+    //根据消息id列表获取消息
+    List<Message> selectMessagesByIds(List<Long> messageIds);
+    
+    //根据群聊信息id列表获取群聊信息
+    List<GroupMessage> selectGroupsByIds(List<Long> groupIds);
+    
+    //判断群聊消息是否存在
+    @Select("SELECT EXISTS(SELECT 1 FROM group_message WHERE id = #{targetId})")
+    boolean existsGroupMessageById(Long targetId);
+
+    //更新群聊消息状态
+    @Update("UPDATE group_message SET status = #{status} WHERE id = #{targetId}")
+    void updateGroupMessageStatus(Long targetId, int status);
+
+    //根据群聊消息id获取发送者id
+    @Select("SELECT sender_id as senderId FROM group_message WHERE id = #{targetId}")
+    Long getGroupMessageSenderId(Long targetId);
+
+    //判断群聊是否存在
+    @Select("select exists(select 1 from `group` where id = #{id})")
+    boolean existsGroupById(Long id);
+
+
     //判断用户列表是否存在
 //    @Select("SELECT EXISTS(SELECT 1 FROM `user_high` WHERE id IN (${memberIds}))")
 //    boolean existsUsers(List<Long> memberIds);

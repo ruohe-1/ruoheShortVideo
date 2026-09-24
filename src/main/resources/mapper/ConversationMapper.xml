@@ -329,6 +329,15 @@
             </if>
         </trim>
     </insert>
+    <!-- insert ignore：并发下同一用户被两个管理员同时拉时，重复行直接跳过，不会触发唯一键报错让整批失败 -->
+    <insert id="batchInsertGroupUsers">
+        insert ignore into group_user (group_id,user_id,role,`type`,unread_count,last_read_message_id,created_time)
+        values
+        <foreach collection="members" item="groupUser" separator=",">
+            (#{groupUser.groupId},#{groupUser.userId},#{groupUser.role},#{groupUser.type},#{groupUser.unreadCount},#{groupUser.lastReadMessageId},#{groupUser.createdTime})
+        </foreach>
+
+    </insert>
     <update id="updateConversationRead">
         update conversation
         set unread_count_user1 = case when user1_id = #{userId} and id = #{conversationId} then 0
@@ -384,6 +393,16 @@
         SET unread_count = unread_count + 1
         WHERE group_id = #{groupId}
           AND user_id != #{senderId}
+    </update>
+    <!-- 容量兜底（并发安全）：
+         member_count 的语义是"不含群主"（createGroup/addMembers 都按此维护），
+         真实人数 = member_count + 1，所以人数上限 50 对应 member_count 上限 49(<50)。
+         并发拉人时两个 UPDATE 会对 group 行排队执行，后者把 member_count+size 顶到 >=50
+         则影响0行 → 服务层抛异常触发事务回滚，从根上杜绝超员竞态 -->
+    <update id="updateGroupMemberCount">
+        UPDATE `group`
+        SET member_count = member_count + #{size},updated_time = now()
+        WHERE id = #{groupId} and member_count + #{size} &lt; 50
     </update>
 
     <select id="getConversationList" resultType="com.shortvideo.pojo.entity.Conversation">
@@ -530,14 +549,15 @@
                gu.unread_count as unreadCount,
                gu.role as role
         from `group` g
-        left join group_user gu on gu.group_id = g.id and gu.user_id = #{userId}
-        where
+        join group_user gu on gu.group_id = g.id and gu.user_id = #{userId}
+        <where>
             <if test="keyword != null and keyword != ''">
                 g.name like CONCAT('%', #{keyword}, '%')
             </if>
-        <if test="lastId != null and lastId > 0 ">
-            and g.id &lt; #{lastId}
-        </if>
+            <if test="lastId != null and lastId > 0 ">
+                and g.id &lt; #{lastId}
+            </if>
+        </where>
         order by g.id desc
         limit #{limit}
     </select>
@@ -553,11 +573,80 @@
                  else c.user1_id
             end as otherUserId
         from conversation c
+        join user_high u
+        on u.id =
+           case when c.user1_id = #{userId} then c.user2_id else c.user1_id end
         where (c.user1_id = #{userId} or c.user2_id = #{userId})
+        <if test="keyword != null and keyword != ''">
+            and u.nickname like CONCAT('%', #{keyword}, '%')
+        </if>
         <if test="lastId != null and lastId > 0 ">
             and c.id &lt; #{lastId}
         </if>
         order by c.id desc
         limit #{limit}
+    </select>
+    <select id="countByGroupId" resultType="java.lang.Integer">
+        select count(*) as count
+        from group_user
+        where group_id = #{groupId}
+    </select>
+    <select id="selectExistingUserIds" resultType="java.lang.Long">
+        select user_id as userId
+        from group_user
+        where group_id = #{groupId}
+        and user_id in
+        <foreach item="userId" collection="targetIds" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+    </select>
+    <select id="getUsersRoleByUserId" resultType="com.shortvideo.pojo.vo.conversation.ReadMessageVO">
+        select gu.user_id as userId,
+               gu.role as role
+        from group_user gu
+        where gu.group_id = #{groupId}
+          and gu.user_id  = #{userId}
+
+    </select>
+    <select id="selectRecent" resultType="com.shortvideo.pojo.vo.message.GroupMessageVO">
+        select gm.id as messageId,
+               gm.group_id as groupId,
+               gm.sender_id as senderId,
+               gm.content as content,
+               gm.type as type,
+               gm.is_recalled as isRecalled,
+               gm.created_time as createdTime
+        from `group_message` gm
+        where gm.group_id = #{groupId}
+        order by gm.created_time asc
+        limit #{limit}
+    </select>
+    <select id="selectMessagesByIds" resultType="com.shortvideo.pojo.entity.Message">
+        select id as id,
+               conversation_id as conversationId,
+               sender_id as senderId,
+               content as content,
+               type as type,
+               status as status,
+               created_time as createdTime
+        from `message`
+        where id in
+        <foreach item="id" collection="messageIds" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+    <select id="selectGroupsByIds" resultType="com.shortvideo.pojo.entity.GroupMessage">
+        select gm.id as id,
+               gm.group_id as groupId,
+               gm.sender_id as senderId,
+               gm.content as content,
+               gm.type as type,
+               gm.is_recalled as isRecalled,
+               gm.created_time as createdTime
+        from `group_message` gm
+        where gm.id in
+        <foreach item="id" collection="groupIds" open="(" separator="," close=")">
+            #{id}
+        </foreach>
     </select>
 </mapper>

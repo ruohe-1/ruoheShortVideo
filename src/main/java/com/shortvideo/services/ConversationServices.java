@@ -43,4 +43,10 @@ public interface ConversationServices {
     CursorPageVO<ReadMessageVO> getUsersProfile(Long groupId, Long lastId, Integer size);
     // 搜索会话 私信+群聊
     SearchResultVO searchConversation(String keyword,Integer size);
+
+    // 邀请群聊成员
+    InviteResultVO addMembers(Long groupId, InviteMembersDTO inviteMembersDTO);
+
+    // 分享视频
+    ShareVideoVO shareVideo(ShareVideoDTO shareVideoDTO);
 }
