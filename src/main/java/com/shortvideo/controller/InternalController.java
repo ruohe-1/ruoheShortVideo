@@ -47,28 +47,28 @@ public class InternalController {
         if(!result) return Result.error(500,"审核失败");
         return Result.success();
     }
-    //获取举报列表
-    @GetMapping("/moderation/reports/pending")
-    public Result<CursorPageVO<ReportVO>> getPendingReports(@RequestParam(name = "lastId") Long lastId,
-                                                            @RequestParam(name = "size",defaultValue = "10") Integer size) {
-        CursorPageVO<ReportVO> cursorPageVO = internalServices.getPendingReports(lastId,size);
-        if(cursorPageVO.getRecords() == null || cursorPageVO.getRecords().isEmpty()) return Result.success(null);
-        return Result.success(cursorPageVO);
-    }
-    //举报通过
-    @PutMapping("/moderation/reports/approve")
-    public Result approveReport(@RequestParam(name = "reportId") Long reportId) {
-        boolean result = internalServices.approveReport(reportId);
-        if(!result) return Result.error(500,"举报失败");
-        return Result.success();
-    }
-    //举报失败
-    @PutMapping("/moderation/reports/reject")
-    public Result rejectReport(@RequestParam(name = "reportId") Long reportId) {
-        boolean result = internalServices.rejectReport(reportId);
-        if(!result) return Result.error(500,"举报失败");
-        return Result.success();
-    }
+//    //获取举报列表
+//    @GetMapping("/moderation/reports/pending")
+//    public Result<CursorPageVO<ReportVO>> getPendingReports(@RequestParam(name = "lastId") Long lastId,
+//                                                            @RequestParam(name = "size",defaultValue = "10") Integer size) {
+//        CursorPageVO<ReportVO> cursorPageVO = internalServices.getPendingReports(lastId,size);
+//        if(cursorPageVO.getRecords() == null || cursorPageVO.getRecords().isEmpty()) return Result.success(null);
+//        return Result.success(cursorPageVO);
+//    }
+//    //举报通过
+//    @PutMapping("/moderation/reports/approve")
+//    public Result approveReport(@RequestParam(name = "reportId") Long reportId) {
+//        boolean result = internalServices.approveReport(reportId);
+//        if(!result) return Result.error(500,"举报失败");
+//        return Result.success();
+//    }
+//    //举报失败
+//    @PutMapping("/moderation/reports/reject")
+//    public Result rejectReport(@RequestParam(name = "reportId") Long reportId) {
+//        boolean result = internalServices.rejectReport(reportId);
+//        if(!result) return Result.error(500,"举报失败");
+//        return Result.success();
+//    }
 
 
 }

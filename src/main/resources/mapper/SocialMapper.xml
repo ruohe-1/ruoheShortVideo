@@ -101,4 +101,18 @@
             #{replyId}
         </foreach>
     </select>
+    <select id="selectCommentRootsByIds" resultType="com.shortvideo.pojo.entity.CommentRoot">
+        select id, video_id, user_id, like_count, content, created_time from comment_root
+        where id in
+        <foreach item="commentId" collection="commentIds" open="(" separator="," close=")">
+            #{commentId}
+        </foreach>
+    </select>
+    <select id="selectCommentRepliesByIds" resultType="com.shortvideo.pojo.entity.CommentReply">
+        select id, comment_id, user_id, reply_user_id as replyUserId, like_count, content, created_time from comment_reply
+        where id in
+        <foreach item="replyId" collection="replyIds" open="(" separator="," close=")">
+            #{replyId}
+        </foreach>
+    </select>
 </mapper>

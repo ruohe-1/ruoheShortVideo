@@ -34,9 +34,11 @@ public interface SocialMapper {
     //判断回复是否存在
     @Select("select exists(select 1 from comment_reply where id = #{commonReplyId})")
     boolean existsReplyById(Long commonReplyId);
+
     //删除回复
     @Delete("DELETE FROM comment_reply WHERE id = #{commonReplyId}")
     void deleteReplyByReplyId(Long commonReplyId);
+
     //评论列表
     List<CommentRoot> commentList(@Param("videoId") Long videoId,@Param("lastId") Long lastId,@Param("size") int i);
     //回复列表
@@ -70,11 +72,24 @@ public interface SocialMapper {
     //获取评论用户id和视频id
     @Select("SELECT user_id, video_id FROM comment_root WHERE id = #{commentId}")
     UserIdAndVideoId getCommentUserIdAndVideoId(Long commentId);
-    //获取回复用户id和视频id
 
+    //获取回复用户id和视频id
     UserIdAndVideoId getReplyUserIdAndVideoId(@Param("replyId") Long replyId, @Param("userId") Long userId);
+
     //获取点赞的评论id集合
     List<Long> getLikedCommentIds(Long userId, List<Long> commentIds);
+
     //获取点赞的回复id集合
     List<Long> getLikedReplyIds(Long userId, List<Long> replyIds);
+
+    //根据评论id集合获取评论列表
+    List<CommentRoot> selectCommentRootsByIds(List<Long> commentIds);
+
+    //根据回复id集合获取回复列表
+    List<CommentReply> selectCommentRepliesByIds(List<Long> replyIds);
+
+    //获取回复用户的id与视频id
+    @Select("SELECT user_id, video_id FROM comment_reply WHERE id = #{targetId}")
+    UserIdAndVideoId getUserIdAndVideoId(Long targetId);
+
 }

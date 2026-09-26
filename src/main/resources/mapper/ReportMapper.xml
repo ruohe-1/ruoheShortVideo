@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shortvideo.mapper.ReportMapper">
+
+    <insert id="insert" parameterType="com.shortvideo.pojo.entity.Report">
+        insert into `report`
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="reporterId != null">reporter_id,</if>
+            <if test="targetType != null">target_type,</if>
+            <if test="targetId != null">target_id,</if>
+            <if test="reasonType != null">reason_type,</if>
+            <if test="reasonDesc != null">reason_desc,</if>
+            <if test="status != null">status,</if>
+            <if test="handlerUserId != null">handler_user_id,</if>
+            <if test="handlerRemark != null">handler_remark,</if>
+            <if test="handlerTime != null">handler_time,</if>
+            <if test="createdTime != null">created_time</if>
+        </trim>
+        values
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="reporterId != null">#{reporterId},</if>
+            <if test="targetType != null">#{targetType},</if>
+            <if test="targetId != null">#{targetId},</if>
+            <if test="reasonType != null">#{reasonType},</if>
+            <if test="reasonDesc != null">#{reasonDesc},</if>
+            <if test="status != null">#{status},</if>
+            <if test="handlerUserId != null">#{handlerUserId},</if>
+            <if test="handlerRemark != null">#{handlerRemark},</if>
+            <if test="handlerTime != null">#{handlerTime},</if>
+            <if test="createdTime != null">#{createdTime}</if>
+        </trim>
+    </insert>
+    <insert id="insertReportAction" parameterType="com.shortvideo.pojo.entity.ReportAction">
+        insert into `report_action`
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="reportId != null">report_id,</if>
+            <if test="targetType != null">target_type,</if>
+            <if test="targetId != null">target_id,</if>
+            <if test="actionType != null">action_type,</if>
+            <if test="duration != null">duration,</if>
+            <if test="reason != null">reason,</if>
+            <if test="handlerId != null">handler_id,</if>
+            <if test="expireTime != null">expire_time,</if>
+            <if test="createdTime != null">created_time</if>
+        </trim>
+        values
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="reportId != null">#{reportId},</if>
+            <if test="targetType != null">#{targetType},</if>
+            <if test="targetId != null">#{targetId},</if>
+            <if test="actionType != null">#{actionType},</if>
+            <if test="duration != null">#{duration},</if>
+            <if test="reason != null">#{reason},</if>
+            <if test="handlerId != null">#{handlerId},</if>
+            <if test="expireTime != null">#{expireTime},</if>
+            <if test="createdTime != null">#{createdTime}</if>
+        </trim>
+    </insert>
+    <update id="updateReport" parameterType="com.shortvideo.pojo.entity.Report">
+        update `report`
+        <trim prefix="set" suffixOverrides=",">
+            <if test="status != null">status = #{status},</if>
+            <if test="handlerUserId != null">handler_user_id = #{handlerUserId},</if>
+            <if test="handlerRemark != null">handler_remark = #{handlerRemark},</if>
+            <if test="handlerTime != null">handler_time = #{handlerTime},</if>
+            <if test="reasonDesc != null">reason_desc = #{reasonDesc},</if>
+        </trim>
+        where id = #{id}
+        and status in (0,3)
+    </update>
+    <select id="selectReportList" resultType="com.shortvideo.pojo.entity.Report">
+        select r.id, r.reporter_id, r.target_type, r.target_id, r.reason_type, r.reason_desc,
+               r.status, r.handler_user_id as handlerUserId, r.handler_remark, r.handler_time, r.created_time
+        from `report` r
+        <where>
+            <if test="lastId != null">r.id &lt; #{lastId}</if>
+            <if test="status != null">and r.status = #{status}</if>
+        </where>
+        order by r.id desc
+        limit #{size}
+    </select>
+</mapper>
