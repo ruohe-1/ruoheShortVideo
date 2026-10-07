@@ -1,6 +1,8 @@
 package com.shortvideo.pojo.entity;
 
 import lombok.Data;
+import org.springframework.cglib.core.Local;
+
 import java.time.LocalDateTime;
 
 /**
@@ -19,6 +21,9 @@ public class UserHigh {
     private Long totalLikes;
     private Integer role;            // 0普通用户 1创作者 2审核员 3管理员
     private Integer status;          // 1正常 2冻结 3封禁
+    private Integer isBot; //0-普通用户 1-AI机器人
     private LocalDateTime createdTime;
     private LocalDateTime updatedTime;
+    private LocalDateTime muteUntil;// 禁言截止时间
+    private LocalDateTime banUntil;//冻结/封号截止时间
 }

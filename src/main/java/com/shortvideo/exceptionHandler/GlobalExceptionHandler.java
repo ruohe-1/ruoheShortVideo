@@ -34,5 +34,9 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.joining(", "));
         return Result.error(400, msg);
     }
+    @ExceptionHandler(BusinessException.class)
+    public Result<?> handleBusinessException(BusinessException e) {
+        return Result.error(400, e.getMessage());
+    }
 }
 

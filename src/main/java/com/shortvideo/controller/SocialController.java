@@ -1,6 +1,7 @@
 package com.shortvideo.controller;
 
 
+import com.shortvideo.annotation.PunishCheck;
 import com.shortvideo.common.Result;
 import com.shortvideo.pojo.dto.social.CommentOrReplyDTO;
 import com.shortvideo.pojo.vo.CursorPageVO;
@@ -18,6 +19,7 @@ public class SocialController {
 
 
     //点赞视频
+    @PunishCheck
     @PostMapping("/like")
     public Result<LikeVO> likeVideo(@RequestParam Long videoId) {
         LikeVO likeVO = socialServices.likeVideo(videoId);
@@ -25,6 +27,7 @@ public class SocialController {
         return Result.success(likeVO);
     }
     //取消点赞
+    @PunishCheck
     @DeleteMapping("/like")
     public Result<LikeVO> cancelLike(@RequestParam Long videoId) {
         LikeVO likeVO = socialServices.cancelLike(videoId);
@@ -33,6 +36,7 @@ public class SocialController {
     }
 
     //关注
+    @PunishCheck
     @PostMapping("/follow")
     public Result<FollowVO> follow(@RequestParam Long userId) {
         FollowVO followVO = socialServices.follow(userId);
@@ -41,6 +45,7 @@ public class SocialController {
     }
 
     //取消关注
+    @PunishCheck
     @DeleteMapping("/follow")
     public Result<FollowVO> cancelFollow(@RequestParam Long userId) {
         FollowVO followVO = socialServices.cancelFollow(userId);
@@ -49,6 +54,7 @@ public class SocialController {
     }
 
     //新增评论
+    @PunishCheck
     @PostMapping("/comment")
     public Result<CommentVO> addComment(@RequestParam(name = "videoId") Long videoId, @RequestBody CommentOrReplyDTO commentOrReplyDTO) {
         CommentVO commentVO = socialServices.addComment(videoId, commentOrReplyDTO.getContent());
@@ -56,6 +62,7 @@ public class SocialController {
         return Result.success(commentVO);
     }
     //删除评论
+    @PunishCheck
     @DeleteMapping("/comment")
     public Result deleteComment(@RequestParam(name = "commentId") Long commentId,
                                 @RequestParam(name = "videoId") Long videoId) {
@@ -63,6 +70,7 @@ public class SocialController {
         return Result.error(400, "删除失败");
     }
     //新增回复
+    @PunishCheck
     @PostMapping("/reply")
     public Result<ReplyVO> addReply(@RequestParam(name = "videoId") Long videoId, @RequestParam(name = "commentId") Long commentId, @RequestBody CommentOrReplyDTO commentOrReplyDTO) {
         ReplyVO replyVO = socialServices.addReply(videoId, commentId, commentOrReplyDTO);
@@ -70,6 +78,7 @@ public class SocialController {
         return Result.success(replyVO);
     }
     //删除回复
+    @PunishCheck
     @DeleteMapping("/reply")
     public Result deleteReply(@RequestParam(name = "videoId") Long videoId,
                               @RequestParam(name = "commentId") Long commentId,
@@ -78,6 +87,7 @@ public class SocialController {
         return Result.error(400, "删除失败");
     }
     //该视频下的评论列表
+    @PunishCheck(checkMute = false)
     @GetMapping("/comment/list/{videoId}")
     public Result<CursorPageVO<CommentVO>> commentList(@PathVariable Long videoId,
                                                        @RequestParam(required = false,name = "lastId") Long lastId,
@@ -89,12 +99,14 @@ public class SocialController {
     //二开：
     //评论点赞
     @PostMapping("/comment/like")
+    @PunishCheck
     public Result<CommentLikeVO> commentLike(@RequestParam(name = "commentId") Long commentId) {
         CommentLikeVO commentLikeVO = socialServices.commentLike(commentId);
         if(commentLikeVO == null) return Result.error(400, "评论点赞失败");
         return Result.success(commentLikeVO);
     }
     //评论取消点赞
+    @PunishCheck
     @DeleteMapping("/comment/like")
     public Result<CommentLikeVO> commentCancelLike(@RequestParam(name = "commentId") Long commentId) {
         CommentLikeVO commentLikeVO = socialServices.commentCancelLike(commentId);
@@ -102,6 +114,7 @@ public class SocialController {
         return Result.success(commentLikeVO);
     }
     //回复点赞
+    @PunishCheck
     @PostMapping("/reply/like")
     public Result<ReplyLikeVO> replyLike(@RequestParam(name = "replyId") Long replyId,
                                          @RequestParam(name = "commentId") Long commentId) {
@@ -110,6 +123,7 @@ public class SocialController {
         return Result.success(replyLikeVO);
     }
     //回复取消点赞
+    @PunishCheck
     @DeleteMapping("/reply/like")
     public Result<ReplyLikeVO> replyCancelLike(@RequestParam(name = "replyId") Long replyId,
                                                @RequestParam(name = "commentId") Long commentId) {
