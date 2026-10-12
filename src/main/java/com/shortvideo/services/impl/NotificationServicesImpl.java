@@ -18,10 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.shortvideo.util.CurrentHolderUtil;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -58,11 +55,20 @@ public class NotificationServicesImpl implements NotificationServices {
                Collectors.toMap(UserHigh::getId, userHigh -> userHigh)
        );
         //2.2 拿到视频信息ID
+//        List<Long> videoIds = notificationList.stream()
+//                .filter(notification -> notification.getVideoId() != null)
+//                .map(Notification::getVideoId)
+//                .distinct()
+//                .filter(videoId -> videoId != null)
+//                .toList();
         List<Long> videoIds = notificationList.stream()
-                .filter(notification -> notification.getVideoId() != null)
+                .filter(n -> n.getTargetType() != null
+                        && (n.getTargetType() == 1 || n.getTargetType() == 2 || n.getTargetType() == 3))
                 .map(Notification::getVideoId)
                 .distinct()
+                .filter(Objects::nonNull)
                 .toList();
+
         Map<Long, VideoFeedVO> videoMap;
         if(!videoIds.isEmpty())
         {
@@ -98,11 +104,17 @@ public class NotificationServicesImpl implements NotificationServices {
                     vo.setSender(senderInfo);
                     //组装目标信息
                     NotificationVO.TargetInfo targetInfo = new NotificationVO.TargetInfo();
-                    targetInfo.setType(notification.getTargetType());// 1-视频 2-评论 3-用户...
+                    targetInfo.setType(notification.getTargetType());//目标类型，含义取决于通知类型 type：
+                    //   type= 1点赞/2评论/3关注/4回复/5@  targetType：1视频 2评论 3用户
+                    //   type=6举报：                    targetType: 1视频 2评论 3回复 4用户 5私信 6群聊
+                    //  → 前端必须先按 item.type===6 分支，否则举报"回复"会被当成"用户"跳到 /profile
                     targetInfo.setId(notification.getTargetId());
                     // 评论类通知跳"视频详情并定位评论"时需要用到所属视频ID，这里一并返回给前端
                     targetInfo.setVideoId(notification.getVideoId());
-                    if(notification.getVideoId() != null){ //视频类型
+                    targetInfo.setReportId(notification.getReportId());
+                    if(notification.getTargetType() != null
+                            && notification.getTargetType() <= 3
+                            && notification.getVideoId() != null){ //视频类型
                         // 注意：评论通知的 targetId 是"评论ID"，要用 videoId 才能查到视频信息，
                         // 之前用 targetId 查会把评论通知的卡片标题/封面误判成"视频已删除"
                         VideoFeedVO videoFeedVO = videoMap.get(notification.getVideoId());
@@ -113,7 +125,8 @@ public class NotificationServicesImpl implements NotificationServices {
                         }else{
                             targetInfo.setTitle("视频已删除");
                             targetInfo.setCoverUrl("");
-                        }
+                        }//原来的问题：type=4/5/6 在 :65 被过滤掉不查视频，
+                        // 但 :109 只看 videoId != null 就进去 → videoMap.get() 必 null → 兜底成"视频已删除"
                     }
                     // 前端根据 type 判断跳转逻辑：
                     // type=1 -> 跳转视频详情页
