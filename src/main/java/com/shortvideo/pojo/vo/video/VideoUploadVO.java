@@ -9,8 +9,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class VideoUploadVO {
-
     private Long videoId;
     private Integer status;
-
 }
