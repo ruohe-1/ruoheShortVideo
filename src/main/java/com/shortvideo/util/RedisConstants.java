@@ -27,9 +27,18 @@ public class RedisConstants {
     //判断用户账号状态与处罚时间
     public static final String USER_PUNISHMENT_PREFIX = "user:punishment:";
 
-    //==================== 推荐算法系统 ====================
+    //推荐算法系统
     //全局热度榜：ZSET，member=videoId，score=热度分，由 HotScoreTask 每5分钟刷新
     public static final String FEED_HOT_KEY = "feed:hot";
     //单个用户的推荐结果池缓存前缀（key: feed:rec:{userId} 未登录用 guest 替代 userId）
     public static final String FEED_REC_PREFIX = "feed:rec:";
+
+    //联想词模块
+    public static final String SUGGEST_PREFIX_KEY = "suggest:prefix:";
+    // 热搜榜：ZSET，member=keyword，score=累计搜索量，由 SearchHotTask 定时聚合
+    public static final String SEARCH_HOT_KEY = "search:hot";
+    //个人搜索历史前缀（key: search:history:{userId}，ZSET，member=keyword，score=时间戳
+    public static final String SEARCH_HISTORY_PREFIX = "search:history:";
+    //搜索限流 防止大量空请求打到数据库
+    public static final String SEARCH_RATE_PREFIX = "search:rate:user:";
 }

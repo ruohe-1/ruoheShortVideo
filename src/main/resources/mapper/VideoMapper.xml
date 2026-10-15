@@ -82,11 +82,9 @@
         left join user_high u on v.user_id = u.id
         left join video_like vl on vl.video_id = v.id and vl.user_id = #{userId}
         <where>
-            <if test="category != null">
-                and v.category_id = #{category}
-            </if>
+            v.status = 1
             <if test="keyword != null">
-                and v.title like CONCAT('%', #{keyword}, '%')
+                 and v.title like CONCAT('%', #{keyword}, '%')
             </if>
             <if test="lastId != null and lastId > 0">
                 and v.id &lt; #{lastId}
@@ -198,6 +196,98 @@
             #{videoId}
             </foreach>
     </select>
+    <select id="recommendVideoPlus" resultType="com.shortvideo.pojo.vo.video.VideoFeedVO">
+        select v.id as videoId, v.user_id as userId, u.nickname as nickName, u.avatar_url, v.category_id as categoryId, v.title, v.play_url as playUrl, v.cover_url as coverUrl, v.duration, v.like_count as likeCount, if(vl.video_id is not null, true, false) as isLiked, if(f.id is not null, true, false) as isFollowed, v.comment_count as commentCount, v.share_count as shareCount, v.created_time as createdTime
+        from video v
+        left join user_high u on v.user_id = u.id
+        left join video_like vl on v.id = vl.video_id and vl.user_id = #{userId}
+        left join follow f on v.user_id = f.followee_id and f.follower_id = #{userId}
+        <where>
+            <if test="videoIds != null and videoIds.size() > 0">
+                v.id in
+                <foreach collection="videoIds" separator="," open="(" close=")">
+                    #{videoId}
+                </foreach>
+            </if>
+            <if test="videoIds == null or videoIds.size() == 0">
+                1 = 0
+            </if>
+        </where>
+    </select>
+    <select id="selectAllCandidates" resultType="com.shortvideo.pojo.vo.video.RecommendCandidateVO">
+        select v.id as videoId,v.user_id as userId,v.category_id as categoryId,
+               v.play_count as playCount,v.like_count as likeCount,
+               v.comment_count as commentCount,v.share_count as shareCount,
+               v.created_time as createdTime
+        from video v
+        join user_high uh on v.user_id = uh.id and uh.status = 1
+        where v.status = 1
+    </select>
+    <select id="selectFeedByIds" resultType="com.shortvideo.pojo.vo.video.VideoFeedVO">
+        select v.id as videoId, v.user_id as userId, u.nickname as nickName, u.avatar_url as avatarUrl,
+        v.category_id as categoryId, v.title, v.play_url as playUrl, v.cover_url as coverUrl,
+        v.duration, v.like_count as likeCount,
+        if(vl.video_id is not null, true, false) as isLiked,
+        if(f.id is not null, true, false) as isFollowed,
+        v.comment_count as commentCount, v.share_count as shareCount,
+        v.created_time as createdTime
+        from video v
+        left join user_high u on v.user_id = u.id
+        left join video_like vl on v.id = vl.video_id and vl.user_id = #{userId}
+        left join follow f on v.user_id = f.followee_id and f.follower_id = #{userId}
+        where v.status = 1 and v.id in
+        <foreach collection="pageIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+    <select id="selectFollowFeedCandidateIds" resultType="java.lang.Long">
+        select v.id
+        from follow f
+        join video v on v.user_id = f.followee_id and v.status = 1
+        join user_high uh on v.user_id = uh.id and uh.status = 1
+        where f.follower_id = #{userId}
+        order by v.id desc
+        limit #{limit}
+    </select>
+    <select id="selectRecentWatchedCategoryIds" resultType="java.lang.Long">
+        select v.like_count
+        from user_view_history h
+        join video v on v.id = h.video_id and v.status = 1 and v.category_id is not null
+        where h.user_id = #{userId}
+        order by h.last_view_time desc
+        limit #{limit}
+    </select>
+    <select id="selectCategoryCandidateIds" resultType="java.lang.Long">
+        select
+        from video v
+        join user_high uh on v.user_id = uh.id and uh.status = 1
+        where v.status = 1 and v.category_id in
+        <foreach collection="watchedCats" item="categoryId" open="(" separator="," close=")">
+            #{categoryId}
+        </foreach>
+        order by v.id desc
+        limit #{limit}
+    </select>
+    <select id="selectFreshCandidateIds" resultType="java.lang.Long" parameterType="int">
+        select v.id
+        from video v
+        join user_high uh on v.user_id = uh.id and uh.status = 1
+        where v.status = 1
+        order by v.id desc
+        limit #{limit}
+    </select>
+    <select id="selectCandidatesByIds" resultType="com.shortvideo.pojo.vo.video.RecommendCandidateVO">
+        select v.id as videoId,v.user_id as userId,v.category_id as categoryId,
+               v.play_count as playCount,v.like_count as likeCount,
+               v.comment_count as commentCount,v.share_count as shareCount,
+               v.created_time as createdTime
+        from video v
+        join user_high uh on v.user_id = uh.id and uh.status = 1
+        where v.status = 1 and v.id in
+        <foreach collection="candidateIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
     <insert id="insertVideoAiAudit">
         insert into video_ai_audit
         <trim prefix="(" suffix=")" suffixOverrides=",">
@@ -228,4 +318,34 @@
         update video set play_count = play_count + #{count}
                      where id = #{videoId}
     </update>
+    <select id="selectVideosForretranscode" resultType="com.shortvideo.pojo.entity.Video">
+        select id ,play_url as playUrl,status
+        from video
+        where status in (0,1,2)
+    </select>
+    <update id="updateTranscodeResult">
+        update video
+        set play_url = #{playUrl},cover_url = #{coverUrl},status = #{status}
+        where id = #{videoId}
+    </update>
+    <update id="updateVideoMedia">
+        update video
+        set play_url = #{playUrl}, cover_url = #{coverUrl}
+        where id = #{videoId}
+    </update>
+    <select id="getHotVideos" resultType="com.shortvideo.pojo.dto.video.SuggestWord">
+        select distinct title as word,play_count as score
+        from video
+        where status = 1 and title is not null and title != ''
+        order by play_count desc
+        limit #{limit}
+    </select>
+    <select id="getVideoTitleByVideoIds" resultType="com.shortvideo.pojo.entity.Video">
+        select id, title
+        from video
+        where id in
+        <foreach collection="videoIds" separator="," open="(" close=")" item="videoId">
+            #{videoId}
+        </foreach>
+    </select>
 </mapper>

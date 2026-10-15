@@ -16,4 +16,11 @@
         view_count = view_count + 1,
         max_progress = greatest(max_progress, values(max_progress))
     </insert>
+    <select id="selectWatchedVideoIds" resultType="java.lang.Long" parameterType="java.lang.Long">
+        select h.video_id
+        from user_view_history h
+        join video v on h.video_id = v.id and v.status = 1
+        where h.user_id = #{userId}
+        order by h.last_view_time desc
+    </select>
 </mapper>
