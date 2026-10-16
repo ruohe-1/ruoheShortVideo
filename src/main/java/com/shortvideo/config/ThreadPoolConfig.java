@@ -75,4 +75,26 @@ public class ThreadPoolConfig {
                 new ThreadPoolExecutor.CallerRunsPolicy() //  // 队列满了由调用线程执行，避免丢任务(拒绝策略)
         );
     }
+    // 视频转码线程池 转码是 CPU 密集 + 耗时，核心线程少、队列别太大
+    @Bean
+    public ExecutorService transcodeExecutor(){
+        return new ThreadPoolExecutor(
+                2,
+                4,
+                60L,
+                TimeUnit.SECONDS,
+                new LinkedBlockingQueue<Runnable>(50),
+                new ThreadFactory() {
+                    private final AtomicInteger count = new AtomicInteger(0);
+                    @Override
+                    public Thread newThread(Runnable r) {
+                        Thread t = new Thread(r);
+                        t.setName("transcode-pool-" + count.getAndIncrement());
+                        t.setDaemon(false);
+                        return t;
+                    }
+                },
+                new ThreadPoolExecutor.CallerRunsPolicy()
+        );
+    }
 }
