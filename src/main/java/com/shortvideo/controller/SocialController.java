@@ -87,7 +87,7 @@ public class SocialController {
         return Result.error(400, "删除失败");
     }
     //该视频下的评论列表
-    @PunishCheck(checkMute = false)
+//    @PunishCheck(checkMute = false)
     @GetMapping("/comment/list/{videoId}")
     public Result<CursorPageVO<CommentVO>> commentList(@PathVariable Long videoId,
                                                        @RequestParam(required = false,name = "lastId") Long lastId,

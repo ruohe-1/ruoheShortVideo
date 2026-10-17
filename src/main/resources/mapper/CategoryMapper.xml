@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shortvideo.mapper.CategoryMapper">
+    <select id="selectEnabledList" resultType="com.shortvideo.pojo.entity.Category">
+        select id as id,
+               parent_id as parentId,
+               level as level,
+               name  as name,
+               status  as status,
+               created_time as createdTime
+        from category
+        where status = 1
+        order by id
+    </select>
+</mapper>

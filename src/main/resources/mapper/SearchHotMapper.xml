@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shortvideo.mapper.SearchHotMapper">
+    <update id="upsertSearchCount">
+        insert into search_hot (keyword, search_count, stat_date, created_time)
+        values (#{keyword}, #{count}, curdate(), now())
+            on duplicate key update search_count = search_count + #{count}
+    </update>
+<!--需要唯一索引才能生效-->
+
+    <!-- 近 N 天搜索量 Top（按关键词聚合）；别名用驼峰避免下划线映射问题 -->
+    <select id="selectTopRecent" resultType="com.shortvideo.pojo.entity.SearchHot">
+        select keyword, sum(search_count) as searchCount
+        from search_hot
+        where stat_date &gt;= date_sub(curdate(), interval #{days} day)
+        group by keyword
+        order by searchCount desc
+        limit #{limit}
+    </select>
+</mapper>

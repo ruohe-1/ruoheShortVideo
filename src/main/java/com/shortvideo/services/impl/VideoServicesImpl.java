@@ -1,17 +1,21 @@
 package com.shortvideo.services.impl;
 
 
-import com.shortvideo.mapper.VideoLikeMapper;
-import com.shortvideo.mapper.VideoMapper;
+import com.shortvideo.mapper.*;
 import com.shortvideo.pojo.dto.video.VideoMessageDTO;
 import com.shortvideo.pojo.dto.video.VideoUploadDTO;
 import com.shortvideo.pojo.dto.video.ViewReportDTO;
+import com.shortvideo.pojo.entity.Category;
 import com.shortvideo.pojo.entity.Video;
 import com.shortvideo.pojo.vo.CursorPageVO;
+import com.shortvideo.pojo.vo.SearchResultVO;
+import com.shortvideo.pojo.vo.user.UserSearchVO;
 import com.shortvideo.pojo.vo.video.VideoFeedVO;
 import com.shortvideo.pojo.vo.video.VideoSearchVO;
 import com.shortvideo.pojo.vo.video.VideoUploadVO;
+import com.shortvideo.services.SearchSuggestServices;
 import com.shortvideo.services.VideoServices;
+import com.shortvideo.services.VideoTranscodeServices;
 import com.shortvideo.util.AliyunOSSperator;
 import com.shortvideo.util.RedisConstants;
 import lombok.extern.slf4j.Slf4j;
@@ -31,11 +35,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static com.shortvideo.config.RabbitMQConfig.VIEW_EXCHANGE;
 import static com.shortvideo.config.RabbitMQConfig.VIEW_ROUTING_KEY;
@@ -58,12 +60,20 @@ public class VideoServicesImpl implements VideoServices {
     private RabbitTemplate rabbitTemplate;
     @Autowired
     private IpQueryServiceImpl ipQueryService;
-
+    @Autowired
+    private CategoryMapper categoryMapper;
     @Autowired
     private AliyunOSSperator aliyunOSSperator;
-
-    @Value("${file.upload-dir}")
-    private String uploadDir;
+    @Autowired
+    private VideoTranscodeServices videoTranscodeServices;
+    @Autowired
+    private UserMapper userMapper;
+    @Autowired
+    private SearchHotMapper searchHotMapper;
+    @Autowired
+    private SearchSuggestServices searchSuggestServices;
+//    @Value("${file.upload-dir}")
+//    private String uploadDir;
 
     // 最小有效播放时长 低于它直接判无效播放，防止 1s/2s 边角绕过
     private static final int MIN_VALID_PLAY_SECONDS = 3;
@@ -102,13 +112,17 @@ public class VideoServicesImpl implements VideoServices {
             Video video = new Video();
             video.setUserId(userId);
             video.setTitle(videoUploadDTO.getTitle());
+            video.setCategoryId(videoUploadDTO.getCategoryId());
             video.setPlayUrl(url);
             video.setCoverUrl("");
             video.setDuration(videoUploadDTO.getDuration() != null ? videoUploadDTO.getDuration() : 0);
-            video.setStatus(2);
+//            video.setStatus(2);
+            video.setStatus(0); //改为转码中 转码完成后置位2
             videoMapper.insert(video);
-            //异步开启AI视频审核
-            aiAuditServices.auditVideoAsync(video.getId());
+//            //异步开启AI视频审核
+//            aiAuditServices.auditVideoAsync(video.getId());
+            //这里抽到转码结束后再去调用AI审核 原文件传到oss 异步转为h.264
+            videoTranscodeServices.transcodeAsync(video.getId(),url);
             return new VideoUploadVO(video.getId(), 2);
         }catch (Exception e){
             log.error("上传视频失败", e);
@@ -176,20 +190,145 @@ public class VideoServicesImpl implements VideoServices {
         return true;
     }
 
+    // 搜索视频 0：综合 1：视频 2：用户
     @Override
-    public CursorPageVO<VideoSearchVO> searchVideo(String keyword, Long lastId, int size, String category) {
+    public CursorPageVO<SearchResultVO> searchVideo(String keyword, Long lastId, int size, Integer type) {
+//        Long userId = CurrentHolderUtil.getCurrent();
+//        boolean hasMore = false;
+//        List<VideoSearchVO> videoSearchVOS = videoMapper.searchVideo(keyword, lastId, size+1, category, userId);
+//        if(videoSearchVOS.size() > size)
+//        {
+//            hasMore = true;
+//            videoSearchVOS.remove(videoSearchVOS.size()-1);
+//        }
+//        if(videoSearchVOS.isEmpty()) return new CursorPageVO<>(videoSearchVOS, lastId, hasMore, size);
+//        Long newLastId = videoSearchVOS.getLast().getVideoId();
+//        return new CursorPageVO<>(videoSearchVOS, newLastId, hasMore, size);
+        //1. 获取登录用户
         Long userId = CurrentHolderUtil.getCurrent();
-        boolean hasMore = false;
-        List<VideoSearchVO> videoSearchVOS = videoMapper.searchVideo(keyword, lastId, size+1, category, userId);
-        if(videoSearchVOS.size() > size)
-        {
-            hasMore = true;
-            videoSearchVOS.remove(videoSearchVOS.size()-1);
+        if(userId == null) return new CursorPageVO<>(new ArrayList<>(), 0L, false, size);
+        //2. 判断是搜索用户还是视频还是推荐
+        if(type == null || (type != 0 && type != 1 && type != 2)) {
+            return new CursorPageVO<>(new ArrayList<>(), 0L, false, size);
         }
-        if(videoSearchVOS.isEmpty()) return new CursorPageVO<>(videoSearchVOS, lastId, hasMore, size);
-        Long newLastId = videoSearchVOS.getLast().getVideoId();
-        return new CursorPageVO<>(videoSearchVOS, newLastId, hasMore, size);
+        boolean hasMore = false;
+        List<SearchResultVO> searchResultVOS = new ArrayList<>();
+        String keywordTrim = keyword == null ? null : keyword.trim();
+        //记录搜索量(提供热搜榜)
+        try {
+            searchHotMapper.upsertSearchCount(keywordTrim,1);
+        }catch (Exception e){
+            log.warn("记录搜索量失败: {}", keywordTrim,e);
+        }
+        //记录我的搜索历史
+        searchSuggestServices.recordHistory(keywordTrim);
+        if(type == 0){
+           searchResultVOS = handleGeneralSearch(keywordTrim , lastId, size, type, userId);
+        } else if (type == 1) {
+           searchResultVOS = handleVideoSearch(keywordTrim, lastId, size, type, userId);
+        }else{
+            searchResultVOS = handleUserSearch(keywordTrim, lastId, size, type, userId);
+        }
+        if(searchResultVOS == null || searchResultVOS.isEmpty()){
+            return new CursorPageVO<>(new ArrayList<>(), 0L, false, size);
+        }
+        if(searchResultVOS.size() > size){
+            hasMore = true;
+            searchResultVOS = new ArrayList<>(searchResultVOS.subList(0, size)); // 截断
+        }
+        Long newLastId = 0L;
+        for (int i = searchResultVOS.size() - 1; i >= 0; i--) {
+            if (searchResultVOS.get(i).getResultType() == 1) {
+                newLastId = searchResultVOS.get(i).getId();
+                break;
+            }
+        }
+        // 如果找不到视频则直接取最后一个的ID 用户搜索时就是最后一个用户id
+        if (newLastId == 0L) newLastId = searchResultVOS.get(searchResultVOS.size() - 1).getId();
+        return new CursorPageVO<>(searchResultVOS, newLastId, hasMore, size);
+
     }
+
+    // 处理综合搜索(用户默认只搜索3个)
+    private List<SearchResultVO> handleGeneralSearch(String keyword, Long lastId, int size, Integer type, Long userId) {
+        if(keyword == null || keyword.isEmpty() || type == null || userId == null || size <= 0){
+            return new ArrayList<>();
+        }
+        List<SearchResultVO> searchResultVOS = new ArrayList<>();
+//        List<UserSearchVO> userSearchVOS = userMapper.searchUser(keyword, 0L, 3, userId);//查最新的三个 跟已经关注了的做筛选
+        List<UserSearchVO> followed = userMapper.searchFollowedUsers(keyword,0L,3,userId);
+        if(followed.size() < 3){//关注的不够 补未关注的
+            int remain = 3 - followed.size();
+            List<UserSearchVO> userSearchVOS = userMapper.searchUser(keyword, 0L, remain, userId);
+            followed.addAll(userSearchVOS);
+        }
+        List<VideoSearchVO> videoSearchVOS = videoMapper.searchVideo(keyword, lastId, size+1, userId);
+//        if(userSearchVOS != null && !userSearchVOS.isEmpty()){
+//            searchResultVOS = userSearchVOS.stream().map(userSearchVO -> {
+//                SearchResultVO resultVO = new SearchResultVO();
+//                resultVO.setId(userSearchVO.getUserId());
+//                resultVO.setResultType(3);
+//                resultVO.setUser(userSearchVO);
+//                return resultVO;
+//            }).toList();
+//        }// stream toList之后得到的是不可变的list，不能直接添加元素
+        for (UserSearchVO u : followed) {
+                SearchResultVO r = new SearchResultVO();
+                r.setResultType(2);
+                r.setId(u.getUserId());
+                r.setUser(u);
+                searchResultVOS.add(r);
+        }
+        if(videoSearchVOS != null && !videoSearchVOS.isEmpty()){
+            searchResultVOS.addAll(videoSearchVOS.stream().map(videoSearchVO -> {
+                SearchResultVO resultVO = new SearchResultVO();
+                resultVO.setId(videoSearchVO.getVideoId());
+                resultVO.setResultType(1);
+                resultVO.setVideo(videoSearchVO);
+                return resultVO;
+            }).toList());
+        }
+        return searchResultVOS;
+    }
+
+    // 处理用户搜索
+    private List<SearchResultVO> handleUserSearch(String keyword, Long lastId, int size, Integer type, Long userId) {
+        if(keyword == null || keyword.isEmpty() || type == null || userId == null || size <= 0){
+            return new ArrayList<>();
+        }
+        List<SearchResultVO> searchResultVOS = new ArrayList<>();
+        List<UserSearchVO> followed = userMapper.searchFollowedAndUnfollowedUsers(keyword, lastId, size+1, userId);
+        if(followed == null || followed.isEmpty())
+            return new ArrayList<>();
+        searchResultVOS = followed.stream().map(userSearchVO -> {
+            SearchResultVO resultVO = new SearchResultVO();
+            resultVO.setResultType(2);
+            resultVO.setId(userSearchVO.getUserId());
+            resultVO.setUser(userSearchVO);
+            return resultVO;
+        }).toList();
+        return searchResultVOS;
+    }
+
+    // 处理视频搜索
+    private List<SearchResultVO> handleVideoSearch(String keyword, Long lastId, int limit, Integer type, Long userId) {
+        if(keyword == null || keyword.isEmpty() || type == null || userId == null || limit <= 0){
+            return new ArrayList<>();
+        }
+        List<SearchResultVO> searchResultVOS = new ArrayList<>();
+        List<VideoSearchVO> videos = videoMapper.searchVideo(keyword, lastId, limit+1,  userId);
+        if(videos == null || videos.isEmpty())
+            return new ArrayList<>();
+        searchResultVOS = videos.stream().map(videoSearchVO -> {
+           SearchResultVO resultVO = new SearchResultVO();
+           resultVO.setResultType(1);
+           resultVO.setId(videoSearchVO.getVideoId());
+           resultVO.setVideo(videoSearchVO);
+           return resultVO;
+        }).toList();
+        return searchResultVOS;
+    }
+
     //二开：推送关注视频
     @Override
     public CursorPageVO<VideoFeedVO> followVideo(Long lastId, int size) {
@@ -245,6 +384,7 @@ public class VideoServicesImpl implements VideoServices {
                 videoMessageDTO);
 
     }
+
     //7层检验
     private boolean validateViewReport(ViewReportDTO viewReportDTO, Long userId) {
         //1. 视频是否存在
@@ -353,6 +493,11 @@ public class VideoServicesImpl implements VideoServices {
         return exists;
         //Caffeine 的区别就一个：每次请求多 1 次 Redis 往返（打入已有的一串校验里，可忽略）。
         //两种方案都行
+    }
+    //分类列表
+    @Override
+    public List<Category> listCategories() {
+        return categoryMapper.selectEnabledList();
     }
 }
 

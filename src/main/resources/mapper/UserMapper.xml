@@ -158,4 +158,64 @@
             #{userId}
         </foreach>
     </select>
+    <select id="searchUser" resultType="com.shortvideo.pojo.vo.user.UserSearchVO">
+        select uh.id as userId, uh.nickname as nickname, uh.avatar_url as avatarUrl, uh.signature as signature,
+               uh.follower_count as followerCount, uh.total_likes as likeCount,
+               false as isFollowed
+        from user_high uh
+        <where>
+            uh.status = 1
+            <if test="keyword != null">
+                and uh.nickname like CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="lastId != null and lastId > 0">
+                and uh.id &lt; #{lastId}
+            </if>
+            and not exists (select 1 from follow f where f.follower_id = #{userId} and f.followee_id = uh.id)
+        </where>
+        order by uh.id desc
+        limit #{size}
+    </select>
+    <select id="searchFollowedUsers" resultType="com.shortvideo.pojo.vo.user.UserSearchVO">
+        select uh.id as userId, uh.nickname as nickname, uh.avatar_url as avatarUrl, uh.signature as signature,
+               uh.follower_count as followerCount, uh.total_likes as likeCount,
+               true as isFollowed
+        from user_high uh
+        join follow f on f.follower_id = #{userId} and f.followee_id = uh.id
+        <where>
+            uh.status = 1
+            <if test="keyword != null">
+                and uh.nickname like CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="lastId != null and lastId > 0">
+                and uh.id &lt; #{lastId}
+            </if>
+        </where>
+        order by uh.id desc
+        limit #{size}
+    </select>
+    <select id="searchFollowedAndUnfollowedUsers" resultType="com.shortvideo.pojo.vo.user.UserSearchVO">
+        select uh.id as userId, uh.nickname, uh.avatar_url as avatarUrl, uh.signature,
+        uh.follower_count as followerCount, uh.total_likes as likeCount,
+        (f.follower_id is not null) as isFollowed
+        from user_high uh
+        left join follow f on f.follower_id = #{userId} and f.followee_id = uh.id
+        where uh.status = 1
+        <if test="keyword != null">
+            and uh.nickname like CONCAT('%', #{keyword}, '%')
+        </if>
+        <if test="lastId != null and lastId > 0">
+            and uh.id &lt; #{lastId}
+        </if>
+        order by isFollowed desc, uh.id desc
+        limit #{size}
+    </select>
+    <select id="getHotUsers" resultType="com.shortvideo.pojo.dto.video.SuggestWord">
+        select distinct nickname as word,
+        follower_count as score
+        from user_high
+        where status = 1 and nickname is not null and nickname != ''
+        order by follower_count desc
+        limit #{limit}
+    </select>
 </mapper>

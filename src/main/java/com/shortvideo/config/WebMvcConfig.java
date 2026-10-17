@@ -27,7 +27,11 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns(
                         "/api/video/recommend",
                         "/api/video/detail",
-                        "/api/video/search"
+                        "/api/video/search",
+                        "/api/video/recommend",
+                        "/api/social/comment/list/**",
+                        "/api/search/suggest",
+                        "/api/search/hot"
                 );
 
         // 必须鉴权：没登录返回 401
@@ -39,7 +43,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/user/sendCode",
                         "/api/video/recommend",
                         "/api/video/detail",
-                        "/api/video/search"
+                        "/api/video/search",
+                        "/api/social/comment/list/**",
+                        "/api/search/suggest",
+                        "/api/search/hot"
                 );
     }
 

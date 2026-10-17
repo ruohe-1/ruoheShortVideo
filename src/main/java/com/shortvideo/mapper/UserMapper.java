@@ -1,9 +1,11 @@
 package com.shortvideo.mapper;
 
 import com.shortvideo.pojo.dto.user.UpdateProfileDTO;
+import com.shortvideo.pojo.dto.video.SuggestWord;
 import com.shortvideo.pojo.entity.UserHigh;
 import com.shortvideo.pojo.entity.UserLow;
 import com.shortvideo.pojo.vo.user.UserListVO;
+import com.shortvideo.pojo.vo.user.UserSearchVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -127,4 +129,24 @@ public interface UserMapper {
     //封禁用户
     @Update("update user_high set status=3, ban_until=#{banUntil} where id=#{userId}")
     void banUserById(@Param("userId") Long targetUserId, @Param("banUntil") LocalDateTime expireTime);
+
+    //搜索没关注的用户
+    List<UserSearchVO> searchUser(@Param("keyword") String keyword,@Param("lastId") Long lastId,@Param("size") int i,@Param("userId") Long userId);
+
+    //搜索关注的用户
+    List<UserSearchVO> searchFollowedUsers(@Param("keyword") String keyword, @Param("lastId") long l, @Param("size") int i, @Param("userId") Long userId);
+
+    //搜索已关注和未关注的用户(用于用户搜索的游标分页)
+    List<UserSearchVO> searchFollowedAndUnfollowedUsers(@Param("keyword") String keyword,@Param("lastId") Long lastId, @Param("size") int i, @Param("userId") Long userId);
+
+    //获取热门用户(昵称+粉丝数)
+    List<SuggestWord> getHotUsers(@Param("limit") int topUsers);
+
+    // 更新密码为 bcrypt 密文（惰性迁移旧MD5用户）
+    @Update("update user_low set password_hash = #{passwordHash} where user_id = #{userId}")
+    int updatePasswordHash(@Param("userId") Long userId, @Param("passwordHash") String passwordHash);
+
+    // 清空高频表里的明文密文对，把密码只留在敏感表
+    @Update("update user_high set password = ' ' where id = #{userId}")
+    int clearLegacyPassword(@Param("userId") Long userId);
 }
