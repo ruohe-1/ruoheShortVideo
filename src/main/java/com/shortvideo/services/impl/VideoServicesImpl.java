@@ -75,8 +75,8 @@ public class VideoServicesImpl implements VideoServices {
 //    @Value("${file.upload-dir}")
 //    private String uploadDir;
 
-    // 最小有效播放时长 低于它直接判无效播放，防止 1s/2s 边角绕过
-    private static final int MIN_VALID_PLAY_SECONDS = 3;
+    // 最小有效播放时长 低于它直接判无效播放，防止 1s 边角绕过
+    private static final int MIN_VALID_PLAY_SECONDS = 2;
 
     @Override
     public VideoUploadVO upload(VideoUploadDTO videoUploadDTO) {

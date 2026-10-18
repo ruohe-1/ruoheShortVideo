@@ -258,7 +258,7 @@
         limit #{limit}
     </select>
     <select id="selectCategoryCandidateIds" resultType="java.lang.Long">
-        select
+        select v.id
         from video v
         join user_high uh on v.user_id = uh.id and uh.status = 1
         where v.status = 1 and v.category_id in

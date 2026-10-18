@@ -79,7 +79,7 @@ public class UserServicesImpl implements UserServices {
         userHigh.setUsername(registerDTO.getUsername());
         userHigh.setNickname(registerDTO.getUsername());
         //不再存密码到high表
-//        userHigh.setPassword(finalPassword);
+        userHigh.setPassword(" ");
         userMapper.insertRegisterHigh(userHigh);
         //封装敏感信息
         UserLow userLowInfo = new UserLow();
