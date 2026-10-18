@@ -9,7 +9,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 
 public interface UserServices {
-    LoginVO register(RegisterDTO registerDTO);
+    LoginVO register(RegisterDTO registerDTO,String ip);
 
     String sendCode(RegisterDTO registerDTO);
 

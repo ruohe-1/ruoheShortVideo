@@ -53,7 +53,7 @@ public class UserServicesImpl implements UserServices {
     private AliyunOSSperator aliyunOSSperator;
     @Transactional
     @Override
-    public LoginVO register(RegisterDTO registerDTO) {
+    public LoginVO register(RegisterDTO registerDTO,String ip) {
         UserLow userLow = userMapper.findByPhone(registerDTO.getPhone());
         //手机号重复
         if(userLow != null)
@@ -72,20 +72,23 @@ public class UserServicesImpl implements UserServices {
             return null;
         }
         String finalPassword = passwordUtil.encrypt(registerDTO.getPassword());
-        String salt = passwordUtil.getSalt(finalPassword);
-        log.info("加密后的密码=[{}], 盐=[{}]", finalPassword, salt);
+//        String salt = passwordUtil.getSalt(finalPassword);
+//        log.info("加密后的密码=[{}], 盐=[{}]", finalPassword, salt);
         //封装用户信息
         UserHigh userHigh = new UserHigh();
         userHigh.setUsername(registerDTO.getUsername());
         userHigh.setNickname(registerDTO.getUsername());
-        userHigh.setPassword(finalPassword);
+        //不再存密码到high表
+//        userHigh.setPassword(finalPassword);
         userMapper.insertRegisterHigh(userHigh);
         //封装敏感信息
         UserLow userLowInfo = new UserLow();
         userLowInfo.setUserId(userHigh.getId());
         userLowInfo.setPhone(registerDTO.getPhone());
-        userLowInfo.setPasswordHash(salt);
-        userLowInfo.setLastLoginIp("广东");
+        // bcrypt 密文存敏感表
+        userLowInfo.setPasswordHash(finalPassword);
+        //先写死 后续部署配置好nginx配置即可
+        userLowInfo.setLastLoginIp(ip);
         userMapper.insertRegisterLow(userLowInfo);
         String token = jwtUtil.generateToken(userHigh.getId(), userHigh.getUsername());
         //封装返回信息
@@ -115,13 +118,11 @@ public class UserServicesImpl implements UserServices {
         return code.toString();
     }
 
-    //登录功能
+    //登录功能 （有部分账号是md5加密的 得惰性兼容 登录成功后会更新为bcrypt）已全部转换
     @Override
     public LoginVO login(LoginDTO loginDTO) {
         LoginVO loginVO = new LoginVO();
-        String salt = null;
         Long userId = null;
-        String password = null;
         UserLow userLow = null;
         UserHigh userHigh = null;
         boolean isPhone = loginDTO.getAccount().matches("1[3-9]\\d{9}");
@@ -129,7 +130,6 @@ public class UserServicesImpl implements UserServices {
         {
             userLow = userMapper.findByPhone(loginDTO.getAccount());
             if(userLow == null) return null;
-            salt = userLow.getPasswordHash();
             userId = userLow.getUserId();
 
             userHigh = userMapper.findByUserId(userLow.getUserId());
@@ -143,7 +143,6 @@ public class UserServicesImpl implements UserServices {
                     throw new BusinessException(userHigh.getStatus() == 3 ? "账号已被封禁" : "账号已被冻结");
                 }
             }
-            password = userHigh.getPassword();
         }else{
             userHigh = userMapper.findByUsername(loginDTO.getAccount());
             if(userHigh == null) return null;
@@ -158,13 +157,40 @@ public class UserServicesImpl implements UserServices {
                 }
             }
             userId = userHigh.getId();
-            password = userHigh.getPassword();
             userLow = userMapper.findByUserIdUserLow(userId);
-            salt = userLow.getPasswordHash();
         }
-        String encryptedInput = passwordUtil.encrypt(loginDTO.getPassword(), salt);
-        if(!encryptedInput.equals(password))
-        {
+
+        if (userLow == null) return null;
+        String raw = loginDTO.getPassword();
+        // 新: bcrypt 密文 旧: 只有盐
+        String storedLow = userLow.getPasswordHash();
+        // 旧: "md5密文:盐"；  新: null/空
+        String storedHigh = userHigh.getPassword();
+
+        boolean ok;
+        if (storedLow != null && storedLow.startsWith("$2")) {
+            //—— bcrypt ——
+            ok = passwordUtil.matches(raw, storedLow);
+        } else if (storedHigh != null && storedHigh.contains(":")) {
+            //—— 旧格式：MD5("密文:盐")，按旧算法校验 ——
+            ok = legacyMd5Match(raw, storedHigh);
+            if (ok) {
+                //登录成功 → 当场用明文重新 bcrypt，升级存进敏感表
+                String newHash = passwordUtil.encrypt(raw);
+                try {
+                    userMapper.updatePasswordHash(userId, newHash);
+                    userMapper.clearLegacyPassword(userId);   //把密文对从高频表清掉
+                    log.info("存量用户密码已惰性升级为 bcrypt: userId={}", userId);
+                } catch (Exception e) {
+                    log.warn("密码升级失败(本次仍登录成功): userId={}", userId, e);
+                }
+            }
+        } else {
+            //既没有 bcrypt 也没有旧密文对
+            ok = false;
+        }
+
+        if (!ok) {
             return null;
         }
         //生成token
@@ -176,6 +202,17 @@ public class UserServicesImpl implements UserServices {
         loginVO.setAvatarUrl(userHigh.getAvatarUrl());
         return loginVO;
 
+    }
+
+    // 旧 MD5 数据兼容校验：仅用于存量用户迁移，新用户一律走 bcrypt
+    private boolean legacyMd5Match(String rawPassword, String storedFull) {
+        if (rawPassword == null || storedFull == null || !storedFull.contains(":")) {
+            return false;
+        }
+        String salt = storedFull.substring(storedFull.indexOf(':') + 1);
+        String md5 = org.springframework.util.DigestUtils
+                .md5DigestAsHex((rawPassword + salt).getBytes());
+        return (md5 + ":" + salt).equals(storedFull);
     }
 
     //获取当前用户信息

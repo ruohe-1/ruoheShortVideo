@@ -9,6 +9,8 @@ import com.shortvideo.pojo.vo.CursorPageVO;
 import com.shortvideo.pojo.vo.user.*;
 import com.shortvideo.services.UserServices;
 import com.shortvideo.util.CurrentHolderUtil;
+import com.shortvideo.util.IpUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -36,8 +38,9 @@ public class UserController {
 
     //注册功能
     @PostMapping("/register")
-    public Result<LoginVO> register(@RequestBody @Valid RegisterDTO registerDTO) {
-        LoginVO loginVO = userServices.register(registerDTO);
+    public Result<LoginVO> register(@RequestBody @Valid RegisterDTO registerDTO, HttpServletRequest httpServletRequest) {
+        String ip = IpUtils.getRealIp(httpServletRequest);
+        LoginVO loginVO = userServices.register(registerDTO,ip);
         if(loginVO == null)
         {
             return Result.error(400,"该用户已注册");
