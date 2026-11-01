@@ -1,0 +1,1 @@
+import{t as e}from"./api-BQEvbnVE.js";function t(t){return e.get(`/my/video`,{params:t})}function n(t){return e.get(`/my/likeVideo`,{params:t})}function r(t){return e.get(`/my/following`,{params:t})}function i(t){return e.get(`/my/followers`,{params:t})}function a(t){return e.get(`/my/historyVideo`,{params:t})}export{t as a,n as i,r as n,a as r,i as t};

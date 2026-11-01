@@ -1,0 +1,1 @@
+import{t as e}from"./api-DScXiNiq.js";function t(t){return e.post(`/report/submit`,t)}function n(t){return e.get(`/report/list`,{params:t})}function r(t,n){return e.put(`/report/${t}/approve`,n)}export{n,t as r,r as t};

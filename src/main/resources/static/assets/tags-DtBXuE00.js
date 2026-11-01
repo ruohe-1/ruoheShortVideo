@@ -1,0 +1,1 @@
+function e(e){return e?(Array.isArray(e)?e:String(e).split(`,`)).map(e=>String(e).trim().replace(/^#/,``)).filter(Boolean):[]}export{e as t};
