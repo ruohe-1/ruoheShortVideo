@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.shortvideo.mapper.AssistTaskMapper">
+
+    <insert id="insert" parameterType="com.shortvideo.pojo.entity.AssistTask">
+        insert into assist_task
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="taskId != null">task_id,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="videoUrl != null">video_url,</if>
+            <if test="status != null">status,</if>
+            <if test="maxRetries != null">max_retries,</if>
+            <if test="requestJson != null">request_json,</if>
+            <if test="resultJson != null">result_json,</if>
+            <if test="failReason != null">fail_reason,</if>
+            <if test="progress != null">progress,</if>
+            <if test="progressMsg != null">progress_msg,</if>
+            <if test="createdTime != null">created_time,</if>
+            <if test="updatedTime != null">updated_time,</if>
+            <if test="finishedTime != null">finished_time</if>
+        </trim>
+        values
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="taskId != null">#{taskId},</if>
+            <if test="userId != null">#{userId},</if>
+            <if test="videoUrl != null">#{videoUrl},</if>
+            <if test="status != null">#{status},</if>
+            <if test="maxRetries != null">#{maxRetries},</if>
+            <if test="requestJson != null">#{requestJson},</if>
+            <if test="resultJson != null">#{resultJson},</if>
+            <if test="failReason != null">#{failReason},</if>
+            <if test="progress != null">#{progress},</if>
+            <if test="progressMsg != null">#{progressMsg},</if>
+            <if test="createdTime != null">#{createdTime},</if>
+            <if test="updatedTime != null">#{updatedTime},</if>
+            <if test="finishedTime != null">#{finishedTime}</if>
+        </trim>
+    </insert>
+    <update id="updateSuccess">
+        update assist_task
+        set status = 'SUCCESS',
+            progress = 100,
+            progress_msg = '生成完成',
+            result_json = #{resultJson},
+            finished_time = now()
+        where task_id = #{taskId}
+    </update>
+    <update id="updateProgress">
+        update assist_task
+        set progress = #{progress},
+            progress_msg = #{msg},
+            updated_time = now(),
+            status = 'PROCESSING'
+        where task_id = #{taskId}
+
+    </update>
+    <update id="updateFailed">
+        update assist_task
+        set status = 'FAILED',
+            fail_reason = #{reason},
+            updated_time = now(),
+            finished_time = now()
+        where task_id = #{taskId}
+    </update>
+    <update id="resetForRetry" parameterType="java.lang.String">
+        update assist_task
+        set status = 'PENDING',
+            progress = 0,
+            progress_msg = '重新排队中',
+            fail_reason = null,
+            finished_time = null
+        where task_id = #{taskId}
+    </update>
+</mapper>

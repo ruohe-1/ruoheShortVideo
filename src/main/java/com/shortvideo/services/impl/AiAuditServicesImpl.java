@@ -51,7 +51,8 @@ public class AiAuditServicesImpl {
         AiAuditRequestDTO aiAuditRequestDTO = new AiAuditRequestDTO();
         aiAuditRequestDTO.setTitle(video.getTitle() == null ? "" : video.getTitle());
         aiAuditRequestDTO.setDescription(video.getDescription() == null ? "" : video.getDescription());
-
+        aiAuditRequestDTO.setVideo_url(video.getPlayUrl() == null ? "" : video.getPlayUrl());
+        aiAuditRequestDTO.setDuration(video.getDuration() == null ? 0 : video.getDuration());
         AiAuditResponseDTO aiAuditResponseDTO = aiAuditClient.callAiAudit(aiAuditRequestDTO);
         if(aiAuditResponseDTO == null) {
             log.error("AI审核视频返回结果为空：{}", videoId);
@@ -64,7 +65,7 @@ public class AiAuditServicesImpl {
         audit.setCategory(aiAuditResponseDTO.getCategory());
         audit.setReason(aiAuditResponseDTO.getReason() == null ? "" :
                 aiAuditResponseDTO.getReason().length() > 512 ? aiAuditResponseDTO.getReason().substring(0, 500) : aiAuditResponseDTO.getReason());
-        audit.setRawContent(aiAuditResponseDTO.getRawContent());
+        audit.setRawContent(aiAuditResponseDTO.getRawContent() == null ? "" : aiAuditResponseDTO.getRawContent());
         audit.setModel("qwen3.8-27b");
         audit.setCreatedTime(LocalDateTime.now());
         videoMapper.insertVideoAiAudit(audit);

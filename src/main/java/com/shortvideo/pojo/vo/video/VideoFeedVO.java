@@ -14,6 +14,7 @@ public class VideoFeedVO {
     private String avatarUrl;
     private Long categoryId;
     private String title;
+    private String tags;   // 标签，逗号分隔
     private String playUrl;
     private String coverUrl;
     private Integer duration;

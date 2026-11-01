@@ -11,6 +11,7 @@
             <if test="categoryId != null">category_id,</if>
             <if test="title != null">title,</if>
             <if test="description != null">description,</if>
+            <if test="tags != null">tags,</if>
             <if test="playUrl != null">play_url,</if>
             <if test="coverUrl != null">cover_url,</if>
             <if test="duration != null">duration,</if>
@@ -28,6 +29,7 @@
             <if test="categoryId != null">#{categoryId},</if>
             <if test="title != null">#{title},</if>
             <if test="description != null">#{description},</if>
+            <if test="tags != null">#{tags},</if>
             <if test="playUrl != null">#{playUrl},</if>
             <if test="coverUrl != null">#{coverUrl},</if>
             <if test="duration != null">#{duration},</if>
@@ -67,7 +69,7 @@
         limit #{size}
     </select>
     <select id="videoDetail" resultType="com.shortvideo.pojo.vo.video.VideoFeedVO">
-        select v.id as videoId, v.user_id as userId, u.nickname as nickName, u.avatar_url as avatarUrl, v.category_id as categoryId, v.title, v.play_url as playUrl, v.cover_url as coverUrl, v.duration, v.like_count as likeCount, if(vl.video_id is not null, true, false) as isLiked, if(f.id is not null, true, false) as isFollowed, v.comment_count as commentCount, v.share_count as shareCount, v.created_time as createdTime
+        select v.id as videoId, v.user_id as userId, u.nickname as nickName, u.avatar_url as avatarUrl, v.category_id as categoryId, v.title, v,tags,v.play_url as playUrl, v.cover_url as coverUrl, v.duration, v.like_count as likeCount, if(vl.video_id is not null, true, false) as isLiked, if(f.id is not null, true, false) as isFollowed, v.comment_count as commentCount, v.share_count as shareCount, v.created_time as createdTime
         from video v
         left join user_high u on v.user_id = u.id
         left join video_like vl on v.id = vl.video_id and vl.user_id = #{userId}
@@ -125,7 +127,7 @@
     </select>
     <select id="followVideo" resultType="com.shortvideo.pojo.vo.video.VideoFeedVO">
         select v.id as videoId, v.user_id as userId, u.nickname as nickName, u.avatar_url,
-        v.category_id as categoryId, v.title, v.play_url as playUrl, v.cover_url as coverUrl,
+        v.category_id as categoryId, v.title, v.tags,v.play_url as playUrl, v.cover_url as coverUrl,
         v.duration, v.like_count as likeCount,
         if(vl.video_id is not null, true, false) as isLiked,
         v.comment_count as commentCount, v.share_count as shareCount, v.created_time as createdTime
@@ -153,7 +155,9 @@
     <select id="selectById" resultType="com.shortvideo.pojo.entity.Video">
         select id as id,
                title as title,
-               description as description
+               description as description,
+               play_url as playUrl,
+               duration as duration
         from video
         where id = #{videoId}
     </select>
@@ -225,7 +229,7 @@
     </select>
     <select id="selectFeedByIds" resultType="com.shortvideo.pojo.vo.video.VideoFeedVO">
         select v.id as videoId, v.user_id as userId, u.nickname as nickName, u.avatar_url as avatarUrl,
-        v.category_id as categoryId, v.title, v.play_url as playUrl, v.cover_url as coverUrl,
+        v.category_id as categoryId, v.title,v.tags,v.play_url as playUrl, v.cover_url as coverUrl,
         v.duration, v.like_count as likeCount,
         if(vl.video_id is not null, true, false) as isLiked,
         if(f.id is not null, true, false) as isFollowed,

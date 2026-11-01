@@ -3,6 +3,7 @@ package com.shortvideo.controller;
 
 import com.shortvideo.annotation.PunishCheck;
 import com.shortvideo.common.Result;
+import com.shortvideo.pojo.dto.video.VideoPunishDTO;
 import com.shortvideo.pojo.dto.video.VideoUploadDTO;
 import com.shortvideo.pojo.dto.video.ViewReportDTO;
 import com.shortvideo.pojo.entity.Category;
@@ -10,6 +11,7 @@ import com.shortvideo.pojo.vo.CursorPageVO;
 import com.shortvideo.pojo.vo.SearchResultVO;
 import com.shortvideo.pojo.vo.video.VideoFeedVO;
 import com.shortvideo.pojo.vo.video.VideoSearchVO;
+import com.shortvideo.pojo.vo.video.VideoUploadInitVO;
 import com.shortvideo.pojo.vo.video.VideoUploadVO;
 import com.shortvideo.services.RecommendedServices;
 import com.shortvideo.services.VideoServices;
@@ -24,6 +26,7 @@ import org.lionsoul.ip2region.xdb.XdbException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
@@ -45,14 +48,31 @@ public class VideoController {
 //        VideoUploadVO videoUploadVO = videoServices.upload(videoUploadDTO);
 //        return Result.success(videoUploadVO);
 //    }
+//    @PunishCheck
+//    @Validated
+//    @PostMapping("/upload")
+//    public Result<VideoUploadVO> uploadVideo(@Valid @ModelAttribute VideoUploadDTO videoUploadDTO) {
+//        if(videoUploadDTO.getFile() == null) return Result.error(400, "文件不能为空");
+//        VideoUploadVO videoUploadVO = videoServices.upload(videoUploadDTO);
+//        return Result.success(videoUploadVO);
+//    }
+    //上传视频
     @PunishCheck
-    @Validated
     @PostMapping("/upload")
-    public Result<VideoUploadVO> uploadVideo(@Valid @ModelAttribute VideoUploadDTO videoUploadDTO) {
-        if(videoUploadDTO.getFile() == null) return Result.error(400, "文件不能为空");
-        VideoUploadVO videoUploadVO = videoServices.upload(videoUploadDTO);
-        return Result.success(videoUploadVO);
+    public Result<VideoUploadInitVO> uploadOnly(
+            @RequestParam(value = "file",required = true)MultipartFile file,
+            @RequestParam(value = "duration",required = false) Integer duration
+            ){
+        return Result.success(videoServices.uploadOnly(file,duration));
     }
+
+    // 发布视频
+    @PunishCheck
+    @PostMapping("/publish")
+    public Result<Long> publish(@Valid @RequestBody VideoPunishDTO dto){
+        return Result.success(videoServices.publish(dto));
+    }
+
 
     //推荐视频
 //    @GetMapping("/recommend")
@@ -115,6 +135,7 @@ public class VideoController {
         return Result.success();
     }
 
+    //todo 后续得改进 这里多加一路标签召回打分
     //二开：推荐视频算法接口 多路召回 + 加权排序，offset 分页
     @GetMapping("/recommend")
     public Result<CursorPageVO<VideoFeedVO>> recommendVideo(@RequestParam(name = "offset") Integer offset,

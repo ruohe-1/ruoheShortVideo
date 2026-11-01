@@ -1,10 +1,7 @@
 package com.shortvideo.client;
 
 
-import com.shortvideo.pojo.dto.ai.AiAuditRequestDTO;
-import com.shortvideo.pojo.dto.ai.AiAuditResponseDTO;
-import com.shortvideo.pojo.dto.ai.AiChatRequestDTO;
-import com.shortvideo.pojo.dto.ai.AiChatResponseDTO;
+import com.shortvideo.pojo.dto.ai.*;
 import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 
@@ -20,8 +17,10 @@ import java.time.Duration;
 @Slf4j
 public class AiAuditClient {
 
-
+    // ai审核 聊天 客户端 短时间生成结果的接口
     private final RestClient restClient;
+    // 生成标题描述的客户端接口
+    private final RestClient assistClient;
     public AiAuditClient(@Value("${ai.audit.base-url}") String baseUrl) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(5)); // 连接超时 5 秒
@@ -30,7 +29,17 @@ public class AiAuditClient {
                 .baseUrl(baseUrl)
                 .requestFactory(factory)
                 .build();
+
+        SimpleClientHttpRequestFactory factory1 = new SimpleClientHttpRequestFactory();
+        factory1.setConnectTimeout(Duration.ofSeconds(5)); // 连接超时 5 秒
+        factory1.setReadTimeout(Duration.ofSeconds(300)); // 读取超时 300 秒 多 agent 要跑很久
+        this.assistClient = RestClient.builder()
+                .baseUrl(baseUrl)
+                .requestFactory(factory1)
+                .build();
     }
+
+
     //调用Python ai审核接口
     public AiAuditResponseDTO callAiAudit(AiAuditRequestDTO aiAuditRequestDTO) {
        try{
@@ -58,6 +67,21 @@ public class AiAuditClient {
                    .body(AiChatResponseDTO.class);
        }catch (Exception e){
            log.error("调用Python ai聊天接口异常，exception {}", e.getMessage());
+           return null;
+       }
+    }
+
+    //调用python ai标题生成接口
+    public AiTitleResponseDTO generateTitle(AiTitleRequestDTO requestDTO) {
+       try {
+           return assistClient.post()
+                   .uri("/assist")
+                   .contentType(MediaType.APPLICATION_JSON)
+                   .body(requestDTO)
+                   .retrieve()
+                   .body(AiTitleResponseDTO.class);
+       }catch (Exception e){
+           log.error("调用Python ai标题生成接口异常，exception {}", e.getMessage());
            return null;
        }
     }

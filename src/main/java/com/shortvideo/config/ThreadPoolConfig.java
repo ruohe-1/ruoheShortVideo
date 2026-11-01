@@ -97,4 +97,5 @@ public class ThreadPoolConfig {
                 new ThreadPoolExecutor.CallerRunsPolicy()
         );
     }
+    //这里不需要为ai标题进程创建线程池 因为我采用了投放mq的方式处理消息
 }

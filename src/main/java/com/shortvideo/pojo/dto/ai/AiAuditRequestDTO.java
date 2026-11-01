@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AiAuditRequestDTO {
+    private String video_url;
     private String title;
     private String description;
+    private Integer duration;
 }

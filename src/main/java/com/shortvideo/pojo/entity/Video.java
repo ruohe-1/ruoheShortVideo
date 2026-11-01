@@ -13,6 +13,7 @@ public class Video {
     private Long categoryId;
     private String title;
     private String description;
+    private String tags; // 标签
     private String playUrl;
     private String coverUrl;
     private Integer duration;        // 视频时长（秒）

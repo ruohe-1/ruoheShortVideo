@@ -3,6 +3,7 @@ package com.shortvideo.services.impl;
 
 import com.shortvideo.mapper.*;
 import com.shortvideo.pojo.dto.video.VideoMessageDTO;
+import com.shortvideo.pojo.dto.video.VideoPunishDTO;
 import com.shortvideo.pojo.dto.video.VideoUploadDTO;
 import com.shortvideo.pojo.dto.video.ViewReportDTO;
 import com.shortvideo.pojo.entity.Category;
@@ -12,32 +13,28 @@ import com.shortvideo.pojo.vo.SearchResultVO;
 import com.shortvideo.pojo.vo.user.UserSearchVO;
 import com.shortvideo.pojo.vo.video.VideoFeedVO;
 import com.shortvideo.pojo.vo.video.VideoSearchVO;
+import com.shortvideo.pojo.vo.video.VideoUploadInitVO;
 import com.shortvideo.pojo.vo.video.VideoUploadVO;
+import com.shortvideo.services.AssistTaskServices;
 import com.shortvideo.services.SearchSuggestServices;
 import com.shortvideo.services.VideoServices;
 import com.shortvideo.services.VideoTranscodeServices;
 import com.shortvideo.util.AliyunOSSperator;
-import com.shortvideo.util.RedisConstants;
 import lombok.extern.slf4j.Slf4j;
-import org.lionsoul.ip2region.xdb.InetAddressException;
-import org.lionsoul.ip2region.xdb.XdbException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import com.shortvideo.util.CurrentHolderUtil;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import static com.shortvideo.config.RabbitMQConfig.VIEW_EXCHANGE;
 import static com.shortvideo.config.RabbitMQConfig.VIEW_ROUTING_KEY;
@@ -72,11 +69,64 @@ public class VideoServicesImpl implements VideoServices {
     private SearchHotMapper searchHotMapper;
     @Autowired
     private SearchSuggestServices searchSuggestServices;
+    @Autowired
+    private AssistTaskServices assistTaskServices;
 //    @Value("${file.upload-dir}")
 //    private String uploadDir;
 
     // 最小有效播放时长 低于它直接判无效播放，防止 1s 边角绕过
     private static final int MIN_VALID_PLAY_SECONDS = 2;
+    //上传视频 只上传不发布
+    @Override
+    public VideoUploadInitVO uploadOnly(MultipartFile file, Integer duration) {
+        try{
+            Long userId = CurrentHolderUtil.getCurrent();
+            if(userId == null) throw new RuntimeException("用户未登录");
+            String url;
+            try (InputStream in = file.getInputStream()){
+                url = aliyunOSSperator.upload(in, file.getSize(),
+                        file.getContentType(), file.getOriginalFilename());
+            }
+            // 记录归属，发布时校验，防止前端随便传别人的 url
+            stringRedisTemplate.opsForValue()
+                    .set(UPLOAD_OWNER_PREFIX + url, userId.toString(), Duration.ofHours(2));
+
+            // 上传完立刻起 AI 任务（异步）
+            String taskId = assistTaskServices.createTask(url, userId, 2);
+            return new VideoUploadInitVO(url, taskId);
+        } catch (IOException e) {
+            log.error("上传视频失败", e);
+            throw new RuntimeException("上传视频失败");
+        }
+    }
+
+    // 发布视频
+    @Override
+    public Long publish(VideoPunishDTO dto) {
+        Long userId = CurrentHolderUtil.getCurrent();
+        String key = UPLOAD_OWNER_PREFIX + dto.getVideoUrl();
+        String owner = stringRedisTemplate.opsForValue().get(key);
+        if (owner == null || !owner.equals(userId.toString())) {
+            throw new RuntimeException("视频地址无效或已过期，请重新上传");
+        }
+        Video video = new Video();
+        video.setUserId(userId);
+        video.setTitle(dto.getTitle());
+        video.setDescription(dto.getDescription());
+        video.setTags(dto.getTags());
+        video.setCategoryId(dto.getCategoryId());
+        video.setPlayUrl(dto.getVideoUrl());
+        video.setCoverUrl("");
+        video.setDuration(dto.getDuration() == null ? 0 : dto.getDuration());
+        video.setStatus(0);                                  // 转码中
+        videoMapper.insert(video);
+        stringRedisTemplate.delete(key);
+         //异步开启AI视频审核
+//       aiAuditServices.auditVideoAsync(video.getId());
+        //这里抽到转码结束后再去调用AI审核 原文件传到oss 异步转为h.264
+        videoTranscodeServices.transcodeAsync(video.getId(), dto.getVideoUrl());
+        return video.getId();
+    }
 
     @Override
     public VideoUploadVO upload(VideoUploadDTO videoUploadDTO) {
@@ -499,5 +549,6 @@ public class VideoServicesImpl implements VideoServices {
     public List<Category> listCategories() {
         return categoryMapper.selectEnabledList();
     }
+
 }
 

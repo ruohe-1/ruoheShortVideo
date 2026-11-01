@@ -16,6 +16,7 @@ public class ReportHandlerFactory {
 
     @Autowired
     public ReportHandlerFactory(List<ReportHandler> handlers) {
+        // 集合注入 spring自动找实现类注入
         this.handlerMap = handlers.stream()
                 .collect(Collectors.toMap(ReportHandler::getTargetType, Function.identity()));
     }

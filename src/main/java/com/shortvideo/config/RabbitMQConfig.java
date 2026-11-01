@@ -18,6 +18,12 @@ public class RabbitMQConfig {
     public static final String VIEW_EXCHANGE = "view.exchange";
     public static final String VIEW_QUEUE = "view.queue";
     public static final String VIEW_ROUTING_KEY = "view.report";
+
+    // AI生成标题交换机
+    public static final String AI_TITLE_EXCHANGE = "ai.title.exchange";
+    // AI生成标题队列
+    public static final String AI_TITLE_QUEUE = "ai.title.queue";
+    public static final String AI_TITLE_ROUTING_KEY = "ai.title";
     // 群消息交换机
     @Bean
     public DirectExchange groupMessageExchange(){
@@ -51,5 +57,23 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(viewQueue)
                 .to(viewExchange)
                 .with(VIEW_ROUTING_KEY);
+    }
+
+    // AI生成标题交换机
+    @Bean
+    public DirectExchange aiTitleExchange(){
+        return new DirectExchange(AI_TITLE_EXCHANGE,true,false);
+    }
+    // AI生成标题队列
+    @Bean
+    public Queue aiTitleQueue() {
+        return new Queue(AI_TITLE_QUEUE, true);
+    }
+    // AI生成标题绑定
+    @Bean
+    public Binding aiTitleBinding(Queue aiTitleQueue, DirectExchange aiTitleExchange){
+        return BindingBuilder.bind(aiTitleQueue)
+                .to(aiTitleExchange)
+                .with(AI_TITLE_ROUTING_KEY);
     }
 }

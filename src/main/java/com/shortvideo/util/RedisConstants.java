@@ -41,4 +41,7 @@ public class RedisConstants {
     public static final String SEARCH_HISTORY_PREFIX = "search:history:";
     //搜索限流 防止大量空请求打到数据库
     public static final String SEARCH_RATE_PREFIX = "search:rate:user:";
+
+    //改进后用来校验是否是上传用户的视频
+    public static final String UPLOAD_OWNER_PREFIX = "upload:owner:";
 }

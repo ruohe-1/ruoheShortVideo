@@ -15,15 +15,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/ai/audit")
 public class AiAuditTestController
 {
-    @Resource
-    private AiAuditClient aiAuditClient;
-
-
-    @GetMapping("/test")
-    public Result<AiAuditResponseDTO> testAiAudit(@RequestParam String title,
-                                                  @RequestParam String description)
-    {
-        AiAuditRequestDTO aiAuditRequestDTO = new AiAuditRequestDTO(title, description);
-        return Result.success(aiAuditClient.callAiAudit(aiAuditRequestDTO));
-    }
+//    @Resource
+//    private AiAuditClient aiAuditClient;
+//
+//
+//    @GetMapping("/test")
+//    public Result<AiAuditResponseDTO> testAiAudit(@RequestParam String title,
+//                                                  @RequestParam String description)
+//    {
+//        AiAuditRequestDTO aiAuditRequestDTO = new AiAuditRequestDTO(title, description);
+//        return Result.success(aiAuditClient.callAiAudit(aiAuditRequestDTO));
+//    }
 }

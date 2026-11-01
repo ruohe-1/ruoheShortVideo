@@ -13,6 +13,7 @@ import com.shortvideo.pojo.vo.user.SignResultVO;
 import com.shortvideo.services.BotDispatchService;
 import com.shortvideo.services.ConversationServices;
 import com.shortvideo.services.UserServices;
+import com.shortvideo.util.CurrentHolderUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -46,14 +47,24 @@ public class BotDispatchServiceImpl implements BotDispatchService {
 
     //异步调用bot
     @Override
-    public void dispatchAsync(GroupMessageVO msg,Long senderId) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                dispatch(msg,senderId);
-            }catch (Exception e) {
-                log.error("异步调用bot异常", e);
-            }
-        }, threadPoolConfig.aiChatExecutor());
+    public void dispatchAsync(GroupMessageVO msg,Long senderId) {//senderId是机器人ID
+        // 调用bot线程中 有一步用到了将AI消息落库 那个方法带了切面注解校验权限，需要设置当前用户 否则后续get不到
+        // 由于是一个自建线程 所以在开头端设置当前用户
+        //sign() 是显式传 msg.getSenderId()，不受影响，签到人仍正确。
+        CurrentHolderUtil.setCurrent(senderId);
+        try {
+            CompletableFuture.runAsync(() -> {
+                try {
+                    dispatch(msg,senderId);
+                }catch (Exception e) {
+                    log.error("异步调用bot异常", e);
+                }
+            }, threadPoolConfig.aiChatExecutor());
+        }catch (Exception e) {
+            log.error("异步调用bot异常", e);
+        }finally {
+            CurrentHolderUtil.removeCurrent(); // 线程池线程会复用，必须清，防串号
+        }
     }
 
     //异步调用bot
