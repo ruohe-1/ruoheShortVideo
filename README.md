@@ -9,6 +9,7 @@
 - **Redis**（验证码、签到位图、热搜/联想、热度榜、限流）
 - **RabbitMQ**（群消息、播放量异步落库）
 - **WebSocket + STOMP**（私信 / 群聊实时推送）
+- **SSE**（AI 辅助任务流式推送）
 - **JWT**（无状态鉴权）+ **AOP**（禁言封禁校验）
 - **阿里云 OSS**（视频 / 聊天 / 头像上传）
 - **ffmpeg**（视频转码、首帧封面）
@@ -21,12 +22,13 @@
 | 模块 | 说明 |
 |------|------|
 | 用户 `UserController` | 注册登录、个人信息、签到、头像上传 |
-| 视频 `VideoController` | 上传、转码、详情、推荐算法、搜索分类、播放量上报 |
+| 视频 `VideoController` | 上传、发布、转码、详情、推荐算法、搜索分类、播放量上报 |
 | 社交 `SocialController` | 点赞、关注、评论、回复 |
 | 会话 `ConversationController` | 私信、群聊、视频分享、群成员邀请 |
 | 通知 `NotificationController` | 通知列表、已读 |
 | 举报 `ReportController` | 提交举报、举报列表、处理、待补充证据 |
 | 审核 `InternalController` | 视频审核、AI 审核结果 |
+| AI 辅助创作 `SSEController` | AI 生成标题描述、任务进度 SSE 推送、失败重试 |
 | 管理 `AdminController` | 用户列表、封禁 / 解封 |
 | 我的 `MyController` | 我的视频、喜欢、关注、粉丝、观看历史 |
 | 数据看板 `DashboardController` | 创作者统计、管理者 KPI |
@@ -62,8 +64,8 @@ mvn spring-boot:run
 src/main/java/com/shortvideo/
 ├── annotation/       # 自定义注解（@PunishCheck 禁言封禁校验）
 ├── aspect/           # AOP 切面
-├── client/           # 外部服务客户端（AI 审核）
-├── config/           # 配置类（WebSocket、RabbitMQ、线程池、WebMvc）
+├── client/           # 外部服务客户端（AI 审核 / AI 标题生成）
+├── config/           # 配置类（WebSocket、RabbitMQ、线程池、SPA 路由）
 ├── consumer/         # MQ 消费者
 ├── controller/       # 控制器
 ├── enums/            # 枚举
@@ -73,11 +75,13 @@ src/main/java/com/shortvideo/
 ├── mapper/           # MyBatis Mapper 接口
 ├── pojo/             # dto / entity / vo
 ├── services/         # 服务接口与实现
+├── sse/              # SSE 流式推送管理
 ├── strategy/         # 策略模式（举报处理）
 ├── task/             # 定时任务（热度榜、签到归档、热搜）
 └── util/             # 工具类
 src/main/resources/
 ├── mapper/           # MyBatis XML
+├── static/           # 前端 SPA 构建产物
 ├── application.yml   # 配置文件（不提交）
 └── ip2region_v4.xdb  # IP 地区库
 ```
